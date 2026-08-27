@@ -1,0 +1,3984 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://duetto.com/schemas/apex/frontmatter.schema.json",
+  "title": "APEX Document Frontmatter Schema",
+  "description": "Canonical frontmatter contract for initiative, experiment, prd, prd-review, team-charter, decision, design, proposal, product-proposal, implementation, policy, guide, wiki, update, note, and other artifact types.",
+  "$comment": "schemaVersion (#791): optional MAJOR.MINOR field recording the schema contract an artifact was authored against. Drives the validator's DEPRECATION-vs-ERROR runway; see docs/CONTRIBUTING.md#deprecation-lifecycle and packages/apex-tools/src/apex/services/deprecations.py (SCHEMA_VERSION is the current value).",
+  "definitions": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Optional MAJOR.MINOR schema-contract version this artifact was authored against (#791 deprecation runway)."
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "product_slug": {
+      "type": "string",
+      "$comment": "Redacted for public publication: internal product portfolio — the enum is closed, its membership is not published."
+    },
+    "tagList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "architecture_declaration": {
+      "x-apex-scaffold-unanswered": true,
+      "type": "object",
+      "description": "Architectural surface this change touches, declared by the author against the ten Lane B triggers in policies/engineering/architecture-decision-policy.md. Architectural change ships as a stream of individually unremarkable pull requests, not as one reviewable diff — 264 merged PRs were measured and a single decision (the Frontdoor property register moving to DynamoDB with field-level encryption) was spread across eight, only one of which looked architectural alone. Diff-level classification caught one of the eight. A declaration turns 'does this diff look architectural' into 'does the accumulated change match what was declared', which is tractable. Every key is required and an empty list is a positive claim that the change touches nothing under that trigger, not a blank — which is why the absence of the whole block is a different thing from a block whose lists are empty, and why the validator can tell them apart. `additionalProperties: false` stops a misspelled trigger key from reading as a silent empty declaration. `null` is rejected on every key, which is what x-apex-scaffold-unanswered relies on: scaffolds and templates emit `null` so an unanswered trigger fails validation rather than passing as an empty claim. Artifacts are largely authored by agents, and an agent emitting schema defaults would otherwise produce ten affirmative claims nobody made.",
+      "additionalProperties": false,
+      "required": [
+        "datastores",
+        "services",
+        "auth_model",
+        "sensitive_data",
+        "dependencies",
+        "system_of_record",
+        "contracts",
+        "shared_components",
+        "runtimes",
+        "fitness_functions"
+      ],
+      "properties": {
+        "datastores": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 1. New persistent datastore, or a new datastore technology, including one provisioned through infrastructure-as-code. Name the store, e.g. 'DynamoDB property-registry'."
+        },
+        "services": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 2. New network-crossing service boundary, or a new synchronous call between existing services. Name both ends, e.g. 'frontdoor -> integrations (sync)'."
+        },
+        "auth_model": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "authentication",
+              "authorization",
+              "tenancy-isolation",
+              "session"
+            ]
+          },
+          "description": "Trigger 3. Which facets of the authentication, authorization, tenancy-isolation or session MODEL this change alters. Registering an endpoint under existing authorization rules is not a trigger and is declared as an empty list. Modelled as a list rather than a single value because one change can alter more than one facet, and because a change that alters two would otherwise have to under-declare."
+        },
+        "sensitive_data": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 4, author-declared. New PII or PCI data flow, or data crossing a regulatory boundary. No tool can derive this — a new email field on an existing entity is PII while being indistinguishable in a diff from any other field addition — so a false negative here is a governance failure that review, not tooling, has to catch."
+        },
+        "dependencies": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 5. New third-party vendor dependency or proprietary SaaS with data egress. A version bump within a major version is not a trigger."
+        },
+        "system_of_record": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 6, author-declared. Entities whose mastering changes, or an introduction of bidirectional synchronisation. schemas/system-of-record.yaml now records the current owner, so a declaration about a registered entity can be checked against it. That registry is not yet exhaustive — see its coverage block — so for an entity it does not list, your declaration is still the only record."
+        },
+        "contracts": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 7. Compatibility-breaking change to a public API, GraphQL schema or proto contract. Purely additive changes are not a trigger and are declared as an empty list."
+        },
+        "shared_components": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 8. New shared library or platform component intended for cross-repo reuse."
+        },
+        "runtimes": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 9. New language, runtime or framework entering the stack."
+        },
+        "fitness_functions": {
+          "$ref": "#/definitions/architecture_declaration_list",
+          "description": "Trigger 10. Fitness function removed or weakened, including any ArchUnit frozen-store update."
+        }
+      }
+    },
+    "architecture_declaration_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Empty means the change touches nothing under this trigger, and that is a claim the author is making rather than a field left blank. minLength stops an empty string from standing in for a real name."
+    },
+    "architecture_waiver": {
+      "type": "object",
+      "description": "A single waiver: the team's assertion that a rule finding, a Lane B trigger, or entry into Lane B by inheritance alone was misapplied to this artifact. Section 7 of policies/engineering/architecture-decision-policy.md. There is exactly one waiver mechanism on purpose — the monthly audit is a corpus query over this field, so an escape hatch anywhere else (a `bot-suppress` label, a `suppress:` config list, the superseded `arb_review_waiver_reason` string) would put the waivers it granted outside the only place the board looks.",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "reason",
+        "expires"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string",
+          "pattern": "^AP-\\d{2}-\\d{2}$",
+          "description": "The rule whose finding is waived. Must be an `id` present in schemas/architecture-rules.yaml — validated cross-file, because a waiver naming a rule that does not exist waives nothing while reading exactly like a waiver that does, and the audit cannot tell them apart from the frontmatter alone."
+        },
+        "trigger": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "The Lane B trigger whose classification is waived, numbered as in section 3 of the decision policy."
+        },
+        "inherited_entry": {
+          "type": "boolean",
+          "const": true,
+          "description": "Declines Lane B entry that arrived only by inheritance from a flagged parent, carrying no evidence about this change. `const: true` because `inherited_entry: false` is not a waiver of anything — it is a waiver-shaped object with no subject, and accepting it would let one past the one-of check below while asserting nothing. This is the one waiver an author files without adjudication, and it is available only when inheritance is the SOLE route into Lane B: a declaration naming trigger 4 (`sensitive_data`) or trigger 6 (`system_of_record`) is the author's own evidence, and the waiver must then name that trigger instead. That condition is enforced by `apex validate`, not here, because it reads a sibling field."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The named person accountable for the waiver. A waiver without one is not a waiver — the verdict function fails on it (section 6) — which is exactly why the label and config mechanisms are not a route to silencing an `AP-*` finding: they carry no owner."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One sentence a board member can evaluate without asking a question."
+        },
+        "expires": {
+          "$ref": "#/definitions/date",
+          "description": "The date the waiver stops applying. Required so a waiver granted once does not become permanent through inattention; `apex validate` fails on an expired one, as does the verdict function."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "rule"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "trigger"
+                ]
+              },
+              {
+                "required": [
+                  "inherited_entry"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "trigger"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "rule"
+                ]
+              },
+              {
+                "required": [
+                  "inherited_entry"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "inherited_entry"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "rule"
+                ]
+              },
+              {
+                "required": [
+                  "trigger"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "$comment": "Exactly one subject per entry. The three keys are the three things that can be wrong — a rule misfired, a trigger misfired, or the artifact was pulled into Lane B by inheritance — and they are adjudicated differently, so an entry naming two would have no single disposition to record. A waiver that needs to say two things is two entries, each with its own owner, reason and expiry."
+    },
+    "architecture_waivers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/architecture_waiver"
+      },
+      "description": "Waivers declared in the artifact rather than hidden in a label, following the mechanism `apex validate` already uses for exemptions (`related_prd: N/A`). Chosen for three properties the alternatives lack: it appears in the pull request diff, so the waiver is reviewed alongside the change that needs it; it is auditable by scanning the corpus, so the monthly audit is a query rather than an archaeology exercise; and it expires. `minItems: 1` because an empty list is not a claim about anything — unlike the declaration block, where `[]` positively asserts the change touches nothing under a trigger — so the honest way to say 'no waivers' is to omit the field."
+    },
+    "initiative": {
+      "x-apex-id-pattern": "^I-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/Initiative.md",
+      "x-apex-status-directory-map": {
+        "discovery": "initiatives",
+        "validated": "initiatives",
+        "delivery": "initiatives",
+        "delivered": null,
+        "deployed": "initiatives/deployed",
+        "shipped": null,
+        "learning": "initiatives/learning",
+        "success": "initiatives/success",
+        "killed": "initiatives/killed"
+      },
+      "$comment": "x-apex-status-directory-map: `delivered` and `shipped` are valid status-enum values but map to null — they have NO code-side directory rule today. domain/status.py STATUS_DIRECTORY_MAP covers only {deployed, learning, success, killed} and ACTIVE_STATUSES only {discovery, validated, delivery}; services/status_mapper.py falls through to the artifact's parent for delivered/shipped, so no canonical location is computed. null is the distinct 'unmapped' sentinel (vs the 'initiatives' base-directory string). A code-side rule for these two is deferred to a later PR.",
+      "x-apex-terminal-statuses": [
+        "success",
+        "killed"
+      ],
+      "x-apex-linkage": [
+        {
+          "field": "depends_on",
+          "target_type": "initiative",
+          "resolution": "required"
+        },
+        {
+          "field": "related_initiatives",
+          "target_type": "initiative",
+          "resolution": "required"
+        },
+        {
+          "field": "eng_exec_sponsor",
+          "target_type": "person",
+          "resolution": "conditional",
+          "required_statuses": [
+            "delivery",
+            "delivered",
+            "deployed",
+            "shipped",
+            "learning",
+            "success"
+          ],
+          "warn_statuses": [
+            "discovery"
+          ],
+          "$comment": "Status-conditional. HARD-REQUIRED (jsonschema) at the six statuses in `required_statuses` — this set mirrors this definition's own allOf if/then conditional (the canonical schema-level rule that requires `eng_exec_sponsor`). The services/validation.py layer (:589-598) additionally emits a friendly hard error at {delivery, deployed, learning, success} and a WARNING at `discovery` (warn_statuses); it does not check `validated`. The earlier flat 'warn' understated a field that hard-fails CI today."
+        },
+        {
+          "field": "pm_exec_sponsor",
+          "target_type": "person",
+          "resolution": "conditional",
+          "required_statuses": [],
+          "warn_statuses": [
+            "delivery",
+            "deployed",
+            "learning",
+            "success"
+          ],
+          "$comment": "Status-conditional, advisory only — never hard-required (no schema allOf requires it). The services/validation.py layer (:599-603) WARNS when absent at {delivery, deployed, learning, success}. The earlier flat 'warn' overstated it (it does not warn at discovery/validated)."
+        },
+        {
+          "field": "jira_project",
+          "target_type": "jira",
+          "resolution": "warn",
+          "$comment": "G5 (RESOLVED, PR4): `jira_project` is now a formal property of initiative.properties (format-only `^[A-Z][A-Z0-9]{1,9}$`, `[string, null]`), sanctioned by DEC-2026-004 clause 2 (docs/spec/08-repo-linkage.md §9.2). It is optional/advisory — NOT in `required` and NOT absence-checked in validation.py; the format constraint applies only when the field is present."
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "domain",
+        "product",
+        "created",
+        "updated",
+        "tags"
+      ],
+      "properties": {
+        "arch_risk_flag": {
+          "type": "boolean",
+          "description": "Marks this as an artifact the board watches rather than reviews. An `initiative` and an `experiment` are signal artifacts, not gate artifacts — they are never scored against the rubric, because there is no change to evidence a rule against yet. Setting the flag puts the item on the board's watch queue and defaults `requires_arb_review: true` on the gate artifacts beneath it, which is the inheritance an `inherited_entry` waiver declines."
+        },
+        "arch_risk_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this is on the watch queue. Required when `arch_risk_flag` is true. A bare boolean produces a queue of titles with no triage information, so the board would open every item to find the two that matter; the presence check is deterministic and costs the author one sentence."
+        },
+        "type": {
+          "const": "initiative"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "discovery",
+            "validated",
+            "delivery",
+            "delivered",
+            "deployed",
+            "shipped",
+            "learning",
+            "success",
+            "killed"
+          ]
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feature": {
+          "type": "string",
+          "description": "Specific feature or capability being improved (optional)"
+        },
+        "metric_target": {
+          "type": "string"
+        },
+        "hypothesis": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "max_experiments": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "time_box": {
+          "type": "string",
+          "description": "Deprecated: will be removed in a future version. Use policy enforcement instead."
+        },
+        "project_type": {
+          "type": "string",
+          "description": "MCP-canonical (DISC-6): distinguishes customer-facing product work from internal engineering work.",
+          "enum": [
+            "customer_facing",
+            "internal_engineering"
+          ]
+        },
+        "asset_types": {
+          "type": "array",
+          "description": "MCP-canonical (DISC-6): property/asset types this initiative targets.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "airports",
+              "extended_stays",
+              "resorts",
+              "casinos",
+              "traditional_hotels",
+              "internal_engineering"
+            ]
+          }
+        },
+        "service_classes": {
+          "type": "array",
+          "description": "MCP-canonical (DISC-6): service class levels this initiative targets.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "full_service",
+              "select_service",
+              "limited_service"
+            ]
+          }
+        },
+        "personas": {
+          "type": "array",
+          "description": "MCP-canonical (DISC-6): customer-facing or internal user personas this initiative targets.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "property_rm",
+              "cluster_rm",
+              "corporate_rm",
+              "gm",
+              "owner",
+              "analyst",
+              "engineer",
+              "sre",
+              "data_engineer",
+              "product_manager"
+            ]
+          }
+        },
+        "engineering_category": {
+          "type": "string",
+          "description": "MCP-canonical (DISC-6): category for internal engineering initiatives.",
+          "enum": [
+            "infrastructure",
+            "tooling",
+            "developer_experience",
+            "technical_debt",
+            "platform",
+            "security",
+            "performance",
+            "observability"
+          ]
+        },
+        "customer_requested": {
+          "type": "boolean",
+          "description": "MCP-canonical (DISC-6): whether a customer requested this work."
+        },
+        "customer_name": {
+          "type": "string",
+          "description": "MCP-canonical (DISC-6): name of the requesting customer, when customer_requested."
+        },
+        "new_data_source": {
+          "type": "boolean",
+          "description": "MCP-canonical (DISC-6): whether this initiative introduces a new data source."
+        },
+        "data_source_description": {
+          "type": "string",
+          "description": "MCP-canonical (DISC-6): description of the new data source, when new_data_source."
+        },
+        "deal_impact": {
+          "type": "object",
+          "description": "MCP-canonical (DISC-6): deal impact context written by create_initiative().",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "won",
+                "lost",
+                "none"
+              ]
+            },
+            "deal_name": {
+              "type": "string"
+            },
+            "deal_value": {
+              "type": "string"
+            }
+          }
+        },
+        "asset_type_target": {
+          "type": "string",
+          "enum": [
+            "full-service-hotels",
+            "limited-service-hotels",
+            "resorts",
+            "casinos",
+            "internal",
+            "all"
+          ]
+        },
+        "rpos_focused": {
+          "type": "boolean"
+        },
+        "rpos_details": {
+          "type": "string"
+        },
+        "beta_partner": {
+          "type": "object",
+          "properties": {
+            "has_partner": {
+              "type": "boolean"
+            },
+            "partner_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "contractual_commitment": {
+          "type": "boolean"
+        },
+        "contractual_commitment_customer": {
+          "type": "string"
+        },
+        "enhancement_request": {
+          "type": "boolean"
+        },
+        "enhancement_request_details": {
+          "type": "string"
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string"
+        },
+        "team": {
+          "type": "string"
+        },
+        "pod": {
+          "type": "string"
+        },
+        "eng_exec_sponsor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Engineering executive sponsor from SELT. Required before advancing to delivery phase."
+        },
+        "pm_exec_sponsor": {
+          "type": "string",
+          "description": "Product/PM executive sponsor from Product Leadership. Optional for engineering-only initiatives."
+        },
+        "related_experiments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "related_prd": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "source_proposal": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "PROP-YYYY-XX-NNN ID of the product proposal that spawned this initiative"
+        },
+        "jira_project": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$",
+          "description": "JIRA project key this initiative reports to (DEC-2026-004 clause 2), e.g. `jira_project: FD`. Optional/advisory — not every initiative tracks work in a single JIRA project."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Initiative IDs this initiative depends on (e.g. blockers or prerequisites)"
+        },
+        "related_initiatives": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Initiative IDs for related work, no ordering implied"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "version_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "version",
+              "date",
+              "change"
+            ],
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "date": {
+                "$ref": "#/definitions/date"
+              },
+              "change": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        },
+        "target_user": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "CCO",
+                "CFO",
+                "VP_DIST",
+                "VP_RM",
+                "VP_SALES",
+                "ASSET_MGR",
+                "IT_DIR",
+                "CONTROLLER",
+                "DIST_MGR",
+                "DOC",
+                "DOS",
+                "GM",
+                "PROP_RM",
+                "CLUSTER_RM",
+                "DORM",
+                "DIR_ANCILLARY",
+                "VP_CASINO"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "CCO",
+                  "CFO",
+                  "VP_DIST",
+                  "VP_RM",
+                  "VP_SALES",
+                  "ASSET_MGR",
+                  "IT_DIR",
+                  "CONTROLLER",
+                  "DIST_MGR",
+                  "DOC",
+                  "DOS",
+                  "GM",
+                  "PROP_RM",
+                  "CLUSTER_RM",
+                  "DORM",
+                  "DIR_ANCILLARY",
+                  "VP_CASINO"
+                ]
+              }
+            }
+          ]
+        },
+        "resources": {
+          "type": "array",
+          "description": "Explicit per-person allocations to this initiative. Overrides the team+LOE heuristic when present.",
+          "items": {
+            "type": "object",
+            "required": [
+              "person",
+              "allocation",
+              "type"
+            ],
+            "properties": {
+              "person": {
+                "type": "string",
+                "description": "Canonical email from guides/for-anyone/apex-process/reference/people-directory.md"
+              },
+              "type": {
+                "type": "string",
+                "description": "Discipline or function of this resource on the initiative",
+                "enum": [
+                  "engineering",
+                  "ops",
+                  "product",
+                  "design",
+                  "qa",
+                  "data",
+                  "other"
+                ]
+              },
+              "allocation": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Fraction of the person's time on this initiative (0.0 to 1.0)"
+              },
+              "role": {
+                "type": "string",
+                "description": "Optional override for the person's role on this initiative"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "documentation_enabled": {
+          "type": "boolean",
+          "description": "Opt-in for automated documentation generation. Default false."
+        },
+        "doc_template": {
+          "type": "string",
+          "enum": [
+            "user-guide",
+            "release-note",
+            "internal-prd-update",
+            "api-change-summary",
+            "integration-guide",
+            "onboarding-path"
+          ],
+          "description": "Template ID for documentation generation from templates/doc/"
+        },
+        "doc_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "published"
+          ],
+          "description": "Status of the generated documentation artifact"
+        },
+        "doc_artifact_id": {
+          "type": "string",
+          "pattern": "^DOC-\\d{4}-\\d{3,4}$",
+          "description": "Set by pipeline after generation. Format: DOC-YYYY-NNN"
+        },
+        "status_history": {
+          "type": "array",
+          "description": "Optional temporal audit trail of status transitions (PROP-2026-APX-005 §Temporal Extension). Formalizes an array 69/168 initiatives already carry informally via `additionalProperties: true`. Mirrors the `pod_charter` status_history shape, adapted to the initiative convention `notes` (plural, the field the informal data already uses) and WARN-first: `date` is NOT hard-required (one existing entry lacks it) and `status` is NOT enum-constrained, so formalizing this array does not retroactively hard-error the informal tail. The load-bearing signal is the EARLIEST dated entry — the only validated inference source for `roadmap.start_date` (audit: ~41% coverage, 91% chronologically ordered, first-entry==created in 87%). Inference takes the minimum well-formed date (not index-0) because ~9% of arrays are out of order; the services/validation.py layer additionally WARNs on out-of-order entries.",
+          "items": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Initiative status at this point in time. Left as a free string (not the initiative status enum) so formalizing the informal array cannot hard-error a legacy value; the validator WARNs on anomalies instead."
+              },
+              "date": {
+                "$ref": "#/definitions/date"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Free-text note for this transition (the initiative convention; pod_charter uses the singular `note`, also accepted)."
+              },
+              "note": {
+                "type": "string",
+                "description": "Singular alias of `notes` for cross-consistency with pod_charter status_history."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "roadmap": {
+          "type": "object",
+          "description": "Roadmap planning block (PROP-2026-APX-005, ratified). Optional and namespaced so the roadmap surface validates as a unit and cannot collide with sibling fields (jira_link/risk_tier/stage drift). `additionalProperties: false` is deliberate: it stops the ad hoc field invention the proposal documents. Every field is inferable or nullable; nothing here is hard-required at the schema level — the services/validation.py layer applies a status-conditional WARN, consistent with how jira_project/pm_exec_sponsor were introduced.",
+          "additionalProperties": false,
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "theme": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Pod-derived controlled vocabulary (a slug of the owning pod-charter team_name, e.g. pod 'Data Platform' -> 'data-platform'). NOT free text and NOT the H2 doc's cross-cutting strategic-program overlays. Resolvable to a pods/PC-*.md charter; services/validation.py WARNs when it does not resolve."
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "description": "Integer rank scoped WITHIN `theme` (matches the H2 doc's numbered rows), NOT a global 1-N order and NOT the low/medium/high/critical enum used elsewhere. Null when no defensible rank exists (the common case at backfill)."
+            },
+            "phase": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "discovery",
+                "planning",
+                "delivery",
+                "backlog",
+                "experiment",
+                null
+              ],
+              "description": "Delivery phase, inferable from `status`. Coarser than status+priority combined, so the status->phase mapping is lossy at the edges."
+            },
+            "target_quarter": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9]{4}-H[12]$",
+              "description": "Target half-year, e.g. '2026-H2'. Nullable and left null for most initiatives — deriving a quarter from created/updated dates is guesswork and is explicitly rejected as a source."
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "inferred",
+                "confirmed"
+              ],
+              "description": "Trust signal (load-bearing). `inferred` = machine guess, not a commitment; `confirmed` = a human (the pod owner) signed off. Backfill always stamps `inferred`."
+            },
+            "confirmed_by": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Email of the pod owner who confirmed this block. Null until `source: confirmed`; never stamped by backfill."
+            },
+            "confirmed_date": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "description": "Date (YYYY-MM-DD) the block was confirmed. Null until `source: confirmed`."
+            },
+            "start_date": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "Temporal extension (PROP-2026-APX-005 §Temporal Extension). Work START. FIELD-LEVEL source tracking: unlike the block-level `source`, start carries its own trust signal because start IS inferable (from the earliest dated `status_history` entry) while target is confirm-only. Backfill sets `{value: <earliest status_history date>, source: inferred, method: status_history}` for initiatives that have a status_history; left `null` when none exists (never falls back to `created` — doc-authoring, not work-start; explicitly EXCLUDED source). The whole object is nullable for the no-signal case.",
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])|[0-9]{4}-(0[1-9]|1[0-2])|[0-9]{4}-Q[1-4]|[0-9]{4}-H[12])$",
+                  "description": "Start date at its true precision, or null when no start signal exists. Accepts day (YYYY-MM-DD), ISO week (YYYY-Www), month (YYYY-MM), quarter (YYYY-Qn), or half-year (YYYY-H1/H2). Inference from status_history is always day-precision."
+                },
+                "precision": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "half",
+                    "unknown",
+                    null
+                  ],
+                  "description": "Granularity of `value`. Absent/null on a day-shaped value is treated as `day` by convention (backward compat). `unknown` (with value: null) means timing is believed to exist but cannot be classified; value: null alone means no signal."
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "inferred",
+                    "confirmed"
+                  ],
+                  "description": "`inferred` = machine guess from status_history; `confirmed` = a human signed off. Start is the only temporal field that can be either."
+                },
+                "method": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "status_history",
+                    "human",
+                    null
+                  ],
+                  "description": "How the value was derived. `status_history` = inferred from the earliest dated `status_history` entry (the ONLY validated inference source); `human` = a person entered it. Never `impl_date`/`git_commit`/`created` — those are EXCLUDED by evidence (see proposal)."
+                }
+              }
+            },
+            "target_end_date": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "Temporal extension. Planned/target END. CONFIRM-ONLY: never auto-populated by the backfill — target end is not inferable from any repo signal (IMPL dates predate initiatives 11% of the time; git first-commit trails real events 5+ months). It is human/GanttPro-fed. `source` enum is deliberately just `confirmed` to encode that. Backfill leaves `value: null`.",
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])|[0-9]{4}-(0[1-9]|1[0-2])|[0-9]{4}-Q[1-4]|[0-9]{4}-H[12])$",
+                  "description": "Target end at its true precision, or null. Accepts day (YYYY-MM-DD), ISO week (YYYY-Www), month (YYYY-MM), quarter (YYYY-Qn), or half-year (YYYY-H1/H2). The coarser forms match `target_quarter` granularity for coarse commitments."
+                },
+                "precision": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "half",
+                    "unknown",
+                    null
+                  ],
+                  "description": "Granularity of `value`. Absent/null on a day-shaped value is treated as `day` by convention (backward compat). `unknown` (with value: null) means timing is believed to exist but cannot be classified; value: null alone means no signal."
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "confirmed"
+                  ],
+                  "description": "Only `confirmed` is valid — target end has no inference source, so a machine may never stamp it."
+                },
+                "confirmed_by": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Email of the human (pod owner / Product Ops) who set the target. Null until confirmed."
+                },
+                "confirmed_date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+                  "description": "Date (YYYY-MM-DD) the target was confirmed. Null until confirmed."
+                }
+              }
+            },
+            "actual_end_date": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "Temporal extension. ACTUAL END. Inferred from the terminal `status_history` entry's date when `status` is terminal ({deployed, learning, success, killed}); null otherwise. `source` enum is just `inferred` — this field is a machine read of the recorded terminal transition, not a human commitment. Forecast end (p50/p85) is intentionally ABSENT: APEX has no flow metrics to compute it (deferred — see proposal).",
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])|[0-9]{4}-(0[1-9]|1[0-2])|[0-9]{4}-Q[1-4]|[0-9]{4}-H[12])$",
+                  "description": "Actual end date at its true precision, from the terminal status_history entry, or null when the initiative is not in a terminal status. Inference from status_history is always day-precision (YYYY-MM-DD); coarser forms are accepted for hand-entered values."
+                },
+                "precision": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "half",
+                    "unknown",
+                    null
+                  ],
+                  "description": "Granularity of `value`. Absent/null on a day-shaped value is treated as `day` by convention (backward compat). `unknown` (with value: null) means timing is believed to exist but cannot be classified; value: null alone means no signal."
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "inferred"
+                  ],
+                  "description": "Only `inferred` — actual end is read from the terminal status_history transition, never hand-stamped here."
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "arch_risk_flag without arch_risk_reason is a watch-queue entry the board cannot triage without opening it. `required: [arch_risk_flag]` in the `if` keeps the absence of the flag from triggering the rule.",
+          "if": {
+            "properties": {
+              "arch_risk_flag": {
+                "const": true
+              }
+            },
+            "required": [
+              "arch_risk_flag"
+            ]
+          },
+          "then": {
+            "required": [
+              "arch_risk_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "discovery"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "metric_target",
+              "hypothesis",
+              "author",
+              "pod"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "delivery",
+                  "delivered",
+                  "deployed",
+                  "shipped",
+                  "learning",
+                  "success"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "eng_exec_sponsor"
+            ],
+            "properties": {
+              "eng_exec_sponsor": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "epic_id"
+        ],
+        "description": "epic_id is a PRD-only field; Initiatives MUST NOT carry epic_id."
+      }
+    },
+    "experiment": {
+      "x-apex-id-pattern": "^E-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/experiments/{id}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "parent_initiative",
+          "target_type": "initiative",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "parent_initiative",
+        "status",
+        "hypothesis",
+        "success_criteria",
+        "learning",
+        "created",
+        "updated",
+        "author",
+        "tags"
+      ],
+      "allOf": [
+        {
+          "$comment": "arch_risk_flag without arch_risk_reason is a watch-queue entry the board cannot triage without opening it. `required: [arch_risk_flag]` in the `if` keeps the absence of the flag from triggering the rule.",
+          "if": {
+            "properties": {
+              "arch_risk_flag": {
+                "const": true
+              }
+            },
+            "required": [
+              "arch_risk_flag"
+            ]
+          },
+          "then": {
+            "required": [
+              "arch_risk_reason"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "arch_risk_flag": {
+          "type": "boolean",
+          "description": "Marks this as an artifact the board watches rather than reviews. An `initiative` and an `experiment` are signal artifacts, not gate artifacts — they are never scored against the rubric, because there is no change to evidence a rule against yet. Setting the flag puts the item on the board's watch queue and defaults `requires_arb_review: true` on the gate artifacts beneath it, which is the inheritance an `inherited_entry` waiver declines."
+        },
+        "arch_risk_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this is on the watch queue. Required when `arch_risk_flag` is true. A bare boolean produces a queue of titles with no triage information, so the board would open every item to find the two that matter; the presence check is deterministic and costs the author one sentence."
+        },
+        "type": {
+          "const": "experiment"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "parent_initiative": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "running",
+            "completed"
+          ]
+        },
+        "hypothesis": {
+          "type": "object",
+          "required": [
+            "statement",
+            "validation_method"
+          ],
+          "properties": {
+            "statement": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "validation_method": {
+              "type": "string",
+              "enum": [
+                "interview",
+                "analytics",
+                "prototype",
+                "a_b_test",
+                "spike"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "time_box": {
+          "type": "string",
+          "description": "Deprecated: will be removed in a future version. Use policy enforcement instead."
+        },
+        "success_criteria": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_size": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Planned sample or cohort size. Free-text is the common form (a cohort description with units, e.g. '~3K nominals' or '≥30 PRs'); a bare integer count is also accepted. Null until planned."
+        },
+        "confidence_level": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Target statistical confidence level as a proportion in [0,1] (e.g. 0.95 for 95%). Null when the experiment is not quantitative/statistical."
+        },
+        "minimum_detectable_effect": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Smallest effect the experiment is powered to detect: a number for a quantitative MDE, or free-text when the threshold is qualitative or TBD. Null when not applicable."
+        },
+        "completed_date": {
+          "x-apex-scaffold": true,
+          "description": "Date the experiment completed (YYYY-MM-DD). Null while planned or running.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actual_sample_size": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Actual sample/cohort size realized at completion. Free-text (e.g. '33,451 invocations') or a bare integer. Null until completed."
+        },
+        "learning": {
+          "type": "object",
+          "required": [
+            "outcome"
+          ],
+          "properties": {
+            "outcome": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "validated",
+                "invalidated",
+                "inconclusive",
+                null
+              ]
+            },
+            "key_insight": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "recommendation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "prd": {
+      "x-apex-id-pattern": "^PRD-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/PRD.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "parent_initiative",
+          "target_type": "initiative",
+          "resolution": "required"
+        },
+        {
+          "field": "epic_id",
+          "target_type": "jira",
+          "resolution": "warn"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "version",
+        "created",
+        "updated",
+        "author",
+        "parent_initiative",
+        "validated_experiments",
+        "approvers"
+      ],
+      "properties": {
+        "type": {
+          "const": "prd"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "approved",
+            "in-development",
+            "deployed",
+            "learning"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent_initiative": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validated_experiments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "priority": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Delivery priority. No single controlled vocabulary is enforced: existing PRDs use either a P-scale (P0/P1/P2/P3) or the low/medium/high/critical vocabulary (see product_proposal.priority). Documented free string to accommodate both; null when unset."
+        },
+        "target_quarter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Human-readable target delivery quarter, e.g. 'Q3 2026'. Free-text — deliberately NOT the roadmap block's strict 2026-H2 half-year pattern. Null or empty when untargeted."
+        },
+        "product_area": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-apex-scaffold": true,
+          "description": "Product area or surface this PRD targets (free-text or a team/product slug, e.g. 'forecasting', 'gamechanger'). Informational; not a controlled vocabulary."
+        },
+        "epic_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "executive_sponsor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional: inherited from parent initiative; SELT or PM leadership member sponsoring this work."
+        },
+        "approvers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "stakeholders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "approval_status": {
+          "type": "array",
+          "description": "Per-approver approval tracking (DISC-9). Mirrors the `approvers` list with status and date.",
+          "items": {
+            "type": "object",
+            "required": [
+              "approver",
+              "status"
+            ],
+            "properties": {
+              "approver": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string"
+              },
+              "date": {
+                "oneOf": [
+                  {
+                    "$ref": "#/definitions/date"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "team_charter": {
+      "x-apex-id-pattern": "^TC-[0-9]{3}$",
+      "x-apex-path-template": "teams/TC-NNN-{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "team_name",
+        "mission",
+        "status",
+        "created",
+        "updated",
+        "owner"
+      ],
+      "properties": {
+        "type": {
+          "const": "team-charter"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "team_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "obsolete"
+          ]
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owned_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$"
+          },
+          "description": "GitHub repository names owned by this team in 'owner/repo' format (e.g., ['duettoresearch/apex', 'duettoresearch/some-service'])"
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "guild_charter": {
+      "x-apex-id-pattern": "^GC-[0-9]{3}$",
+      "x-apex-path-template": "guilds/GC-NNN-{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "elt_sponsor",
+          "target_type": "person",
+          "resolution": "warn"
+        },
+        {
+          "field": "superseded_by",
+          "target_type": "guild-charter",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "description": "A Guild is an advisory, standards-setting body. It owns no repos, no initiatives, and no delivery backlog. `additionalProperties` is deliberately `false` (unlike team_charter/pod_charter, which are `true`) so that ownership fields such as `owned_repos` are structurally unrepresentable rather than merely discouraged: root dispatch routes a `type: guild-charter` document to exactly this branch, so a guild-charter carrying `owned_repos` hard-fails on this branch's `additionalProperties: false`.",
+      "required": [
+        "type",
+        "title",
+        "guild_name",
+        "mission",
+        "status",
+        "created",
+        "updated",
+        "owner",
+        "elt_sponsor"
+      ],
+      "properties": {
+        "type": {
+          "const": "guild-charter"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "guild_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "obsolete"
+          ]
+        },
+        "superseded_by": {
+          "type": "string",
+          "pattern": "^GC-\\d{3}$"
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "elt_sponsor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the ELT member accountable for this guild. Unstructured string, matching the existing eng_exec_sponsor / pm_exec_sponsor / executive_sponsor precedent. Presence and non-emptiness are additionally enforced by the apex validator; membership is NOT gated (no ELT roster exists in this repo)."
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pod_charter": {
+      "x-apex-id-pattern": "^PC-[0-9]{3}$",
+      "x-apex-path-template": "pods/PC-NNN-{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "superseded_by",
+          "target_type": "pod-charter",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "team_name",
+        "mission",
+        "status",
+        "created",
+        "updated",
+        "owner"
+      ],
+      "properties": {
+        "type": {
+          "const": "pod-charter"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "team_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "obsolete"
+          ]
+        },
+        "superseded_by": {
+          "type": "string",
+          "pattern": "^PC-\\d{3}$"
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owned_repos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        },
+        "status_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "status",
+              "date"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "obsolete"
+                ]
+              },
+              "date": {
+                "$ref": "#/definitions/date"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "role",
+              "allocation"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "github": {
+                "type": "string",
+                "minLength": 1
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "PM",
+                  "PL",
+                  "EM",
+                  "EL",
+                  "TL",
+                  "SE",
+                  "DE",
+                  "ML",
+                  "DS",
+                  "DA",
+                  "IA",
+                  "UD",
+                  "UR",
+                  "SR",
+                  "DV",
+                  "QA",
+                  "CO"
+                ]
+              },
+              "allocation": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 100,
+                "multipleOf": 10
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "proposal": {
+      "description": "A single-document proposal (one-pager). Canonical path: `proposals/[{group}/]{slug}.md` — one proposal is exactly one `.md` file with a lowercase-kebab slug filename. The `{group}` segment is an OPTIONAL, one-level-only grouping subdirectory that MAY collect several INDEPENDENT single-file proposals for organization (e.g. `proposals/hackathon-2026/team-alpha-idea.md`); it does NOT fragment one proposal. A same-named sibling directory (e.g. `proposals/foo/` next to `proposals/foo.md`) is permitted ONLY for non-.md assets (images/diagrams). Fragmenting one proposal across multiple prose `.md` files, using a generic `Proposal.md` wrapper filename, or nesting grouping more than one level deep is disallowed (enforced WARN-first by services/validation.py). The `x-apex-path-template` intentionally omits the optional `{group}` segment so template consumers stay resolvable; the grouping allowance is specified here and in docs/spec/03-directory-structure.md `## Proposals`.",
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "proposals/{slug}.md",
+      "x-apex-grouping": {
+        "allowed": true,
+        "max_depth": 1,
+        "template": "proposals/[{group}/]{slug}.md",
+        "note": "Optional one-level grouping subdirectory collecting independent single-file proposals; grouping is not fragmentation."
+      },
+      "x-apex-status-directory-map": {
+        "draft": "proposals",
+        "review": "proposals",
+        "approved": "proposals",
+        "implemented": "archive/proposals",
+        "rejected": "archive/proposals"
+      },
+      "x-apex-terminal-statuses": [
+        "implemented",
+        "rejected"
+      ],
+      "x-apex-linkage": [],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "author",
+        "created",
+        "updated"
+      ],
+      "properties": {
+        "type": {
+          "const": "proposal"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the proposal, e.g. PROP-2026-DOC-001"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "approved",
+            "implemented",
+            "rejected"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "subject_type": {
+          "type": "string",
+          "enum": [
+            "initiative",
+            "prd",
+            "policy",
+            "guide",
+            "process",
+            "schema",
+            "tooling",
+            "architecture",
+            "governance",
+            "other"
+          ]
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "loe": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        },
+        "target_ia": {
+          "type": "string",
+          "description": "Directory path where this artifact would live if approved. Valid locations are defined in docs/IA.md (e.g. policies/engineering/, products/apex/initiatives/, wiki/r&d/meetings)."
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        },
+        "blocked_on": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "description": "Description of what is blocking this proposal from proceeding."
+              },
+              "owner": {
+                "type": "string",
+                "description": "Optional: team or person responsible for unblocking."
+              },
+              "since": {
+                "$ref": "#/definitions/date",
+                "description": "Optional: date when this blocker was first encountered."
+              },
+              "expected_by": {
+                "oneOf": [
+                  {
+                    "$ref": "#/definitions/date"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Optional: expected resolution date, or null if unknown."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Array of blockers preventing this proposal from starting. Each entry describes a concrete gating condition. No link-resolution; free text is intentional."
+        }
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "x-apex-id-pattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+      "x-apex-path-template": "docs/decisions/DEC-YYYY-NNN-{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "superseded_by",
+          "target_type": "decision",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "id",
+        "title",
+        "status",
+        "category",
+        "created",
+        "updated",
+        "author",
+        "approvers"
+      ],
+      "properties": {
+        "type": {
+          "const": "decision"
+        },
+        "architecture": {
+          "$ref": "#/definitions/architecture_declaration",
+          "x-apex-scaffold": true
+        },
+        "architecture_waivers": {
+          "$ref": "#/definitions/architecture_waivers"
+        },
+        "requires_arb_review": {
+          "type": "boolean",
+          "description": "The declared route into Lane B, and how triggers 4 and 6 — which no tool can derive — reach the gate. Set by the author. Policy section 7 specifies this defaults to `true` on every artifact beneath an initiative carrying `arch_risk_flag`; that inheritance is asserted by policy and is not yet enforced by apex-tools. It is not overridable by anything the monthly audit cannot find: the escape it used to have (`arb_review_waiver_reason`, a bare string with no owner and no expiry) is superseded by an `inherited_entry` entry in `architecture_waivers`."
+        },
+        "apex_decision": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+          "description": "The `DEC-YYYY-NNN` record that governs this artifact. Validated cross-file against `docs/decisions/` rather than by pattern alone, because the verdict function fails Lane B without a linked decision record (section 6) and a well-formed ID naming no record would satisfy a pattern check while linking nothing."
+        },
+        "architecture_adr": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+:docs/adr/(ADR-)?[0-9]{3,4}-[a-z0-9-]+\\.md$",
+          "description": "A repository-scoped in-repo ADR, written `{repo}:docs/adr/NNNN-slug.md` (for example `duetto:docs/adr/0001-staged-authentication-bridge-dual-mint-jwt.md`). This is the second of the two durable decision records policy section 2 item 5 accepts — `apex_decision` covers cross-cutting decisions, this one covers repository-scoped ones. Unlike `apex_decision` it is validated by pattern alone and never resolved: the target lives in another repository, so apex-tools has nothing to open. That is a real weakness of this field rather than an oversight — a well-formed reference to a nonexistent ADR passes — and it is the reason the value carries the repo name, so a human reviewer can find the file. Both the `ADR-NNN-slug.md` and the bare `NNNN-slug.md` stem are accepted because the seeded ADRs (#1983) use both: `frontdoor` numbers with an `ADR-` prefix and three digits, `duetto` with four bare digits. Optional here; requiring at least one of this field or `apex_decision` on a Lane B artifact belongs to the verdict function (#1985/#2061), not to the schema — only it knows which artifacts are in Lane B. Carrying both is permitted: policy section 2 item 5 obliges an author to link a durable record and does not prohibit linking two."
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4}-[0-9]{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "accepted",
+            "deprecated",
+            "superseded"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "process",
+            "architecture",
+            "tooling",
+            "governance"
+          ]
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "supersedes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "design": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/designs/{name}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "superseded_by",
+          "target_type": "design",
+          "resolution": "required"
+        }
+      ],
+      "description": "Technical architecture design proposal scoped to an initiative. Lives in a `designs/` directory within an initiative. No global ID — scoped to its initiative.",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "initiative",
+        "product",
+        "author",
+        "created",
+        "updated",
+        "version"
+      ],
+      "properties": {
+        "type": {
+          "const": "design"
+        },
+        "architecture": {
+          "$ref": "#/definitions/architecture_declaration",
+          "x-apex-scaffold": true
+        },
+        "architecture_waivers": {
+          "$ref": "#/definitions/architecture_waivers"
+        },
+        "requires_arb_review": {
+          "type": "boolean",
+          "description": "The declared route into Lane B, and how triggers 4 and 6 — which no tool can derive — reach the gate. Set by the author. Policy section 7 specifies this defaults to `true` on every artifact beneath an initiative carrying `arch_risk_flag`; that inheritance is asserted by policy and is not yet enforced by apex-tools. It is not overridable by anything the monthly audit cannot find: the escape it used to have (`arb_review_waiver_reason`, a bare string with no owner and no expiry) is superseded by an `inherited_entry` entry in `architecture_waivers`."
+        },
+        "apex_decision": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+          "description": "The `DEC-YYYY-NNN` record that governs this artifact. Validated cross-file against `docs/decisions/` rather than by pattern alone, because the verdict function fails Lane B without a linked decision record (section 6) and a well-formed ID naming no record would satisfy a pattern check while linking nothing."
+        },
+        "architecture_adr": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+:docs/adr/(ADR-)?[0-9]{3,4}-[a-z0-9-]+\\.md$",
+          "description": "A repository-scoped in-repo ADR, written `{repo}:docs/adr/NNNN-slug.md` (for example `duetto:docs/adr/0001-staged-authentication-bridge-dual-mint-jwt.md`). This is the second of the two durable decision records policy section 2 item 5 accepts — `apex_decision` covers cross-cutting decisions, this one covers repository-scoped ones. Unlike `apex_decision` it is validated by pattern alone and never resolved: the target lives in another repository, so apex-tools has nothing to open. That is a real weakness of this field rather than an oversight — a well-formed reference to a nonexistent ADR passes — and it is the reason the value carries the repo name, so a human reviewer can find the file. Both the `ADR-NNN-slug.md` and the bare `NNNN-slug.md` stem are accepted because the seeded ADRs (#1983) use both: `frontdoor` numbers with an `ADR-` prefix and three digits, `duetto` with four bare digits. Optional here; requiring at least one of this field or `apex_decision` on a Lane B artifact belongs to the verdict function (#1985/#2061), not to the schema — only it knows which artifacts are in Lane B. Carrying both is permitted: policy section 2 item 5 obliges an author to link a durable record and does not prohibit linking two."
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "accepted",
+            "superseded"
+          ]
+        },
+        "initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Parent initiative ID (e.g., I-2026-HS-001)"
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "supersedes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "execution": {
+      "$comment": "#1583. Four sibling lists, deliberately flat rather than nested. `repositories[].paths` DOES nest because a subpath has no other carrier — it is not derivable from the repo name (the `apex.yaml` precedent: every generated manifest records `paths: [/]` per repo). `epics` and `tickets` do NOT nest under a board because a JIRA key already carries its project prefix by construction — `HOT-420` states its board in the key. Nesting them would store the board twice per key and admit a contradiction (`epics: [HOT-420]` under `key: ADV`) that the flat form cannot even express; the validator derives the board from the prefix and checks it was declared instead. Rule: nest what is not derivable, flatten what is.",
+      "description": "Where this plan's work lives and where it is tracked: the repositories (optionally scoped to subpaths, for monorepos) and the JIRA boards, epics and tickets. Implementation plans named their repositories only in body prose, which made \"which repos does this plan cover?\" answerable only by regex over English — and `duetto`, `reports`, `capture`, `insight` and `forecasting` are repo slugs AND ordinary words, so the answer ranged between 28 and 69 repos depending on how strong a mention had to count. Optional, and every finding against it is a WARNING: 111 plans predate the field. Ticket-level detail belongs here and nowhere else (DEC-2026-004 clause 1).",
+      "type": "object",
+      "properties": {
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Repositories this plan changes. A strict subset of a `repos.yaml` `repositories[]` entry (schemas/repos.schema.json), so a plan entry reads as — and can be lifted into — a sidecar entry. `role` is deliberately absent: it is a property of the initiative→repo edge, recorded once in the initiative's own sidecar. The plan→repo edge is a subset selection, so re-declaring role here would create a second authority with no rule for which wins.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Bare repository slug, resolved against the `duettoresearch` org exactly as a `repos.yaml` `name:` is (policy §4.3). No owner prefix — the sidecar carries any `url:` override."
+              },
+              "paths": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "description": "Subpaths within the repository this plan covers, for monorepo targets. Absent means the whole repository, matching how a generated `apex.yaml` records `paths: [/]`. Same anti-traversal pattern as the sidecar's `paths`.",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(?!.*\\.\\.)(?!.*\\\\)\\S(?:.*\\S)?$"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "boards": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "JIRA boards this plan's work is tracked on. This repo has no existing identity for a board distinct from a project: DEC-2026-004 clause 4 sanctions `jira_link` on repos.yaml for \"board-level links\", and `jira_project` (clause 2) is the only key format it defines. So a board is recorded by its project key, with `url` carrying the board-level link when the board is not 1:1 with a project (a filtered or multi-project board).",
+          "items": {
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9]{1,9}$",
+                "description": "JIRA project key — the identical format `jira_project` uses on `initiative` and `implementation` (DEC-2026-004 clause 2)."
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Board-level link, the role `jira_link` plays on a repos.yaml sidecar (DEC-2026-004 clause 4). Never an individual ticket."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "epics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "JIRA epic keys. Supersedes the flat `epic_ids` field, which stays valid and populated on 66 existing plans; the validator warns if the two disagree rather than picking a winner.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[0-9]+$"
+          }
+        },
+        "tickets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Individual JIRA issue keys. Same grammar as `epics` because an epic and a story are both JIRA issues. Distinct from the sibling `tickets` object, which groups keys by work area (backend/frontend/gql) and predates this block.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[0-9]+$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "implementation": {
+      "x-apex-id-pattern": "^IMPL-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/Implementation.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "parent_prd",
+          "target_type": "prd",
+          "resolution": "required"
+        },
+        {
+          "field": "parent_initiative",
+          "target_type": "initiative",
+          "resolution": "required"
+        },
+        {
+          "field": "epic_ids",
+          "target_type": "jira",
+          "resolution": "warn"
+        },
+        {
+          "field": "execution.repositories",
+          "target_type": "repo",
+          "resolution": "warn",
+          "$comment": "#1583. Resolved against the generated `repos-all.yaml` index and cross-checked against the initiative's own repos.yaml sidecar. WARN, never required: `repos-all.yaml` is generated and can lag the repo, and a stale index must not fail CI on a correct plan."
+        },
+        {
+          "field": "execution.boards",
+          "target_type": "jira",
+          "resolution": "warn",
+          "$comment": "#1583. Checked for internal consistency only — every epic/ticket key's project prefix must name a declared board, and `jira_project` must be among them. Nothing here reaches JIRA, so a board key is never verified to exist."
+        }
+      ],
+      "description": "Engineering execution plan bridging an approved PRD to delivery. ID pattern: IMPL-YYYY-XX-NNN (e.g., IMPL-2026-APX-001).",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "version",
+        "created",
+        "updated",
+        "author",
+        "parent_prd",
+        "parent_initiative"
+      ],
+      "properties": {
+        "type": {
+          "const": "implementation"
+        },
+        "execution": {
+          "$ref": "#/definitions/execution"
+        },
+        "architecture": {
+          "$ref": "#/definitions/architecture_declaration",
+          "x-apex-scaffold": true
+        },
+        "architecture_waivers": {
+          "$ref": "#/definitions/architecture_waivers"
+        },
+        "requires_arb_review": {
+          "type": "boolean",
+          "description": "The declared route into Lane B, and how triggers 4 and 6 — which no tool can derive — reach the gate. Set by the author. Policy section 7 specifies this defaults to `true` on every artifact beneath an initiative carrying `arch_risk_flag`; that inheritance is asserted by policy and is not yet enforced by apex-tools. It is not overridable by anything the monthly audit cannot find: the escape it used to have (`arb_review_waiver_reason`, a bare string with no owner and no expiry) is superseded by an `inherited_entry` entry in `architecture_waivers`."
+        },
+        "apex_decision": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+          "description": "The `DEC-YYYY-NNN` record that governs this artifact. Validated cross-file against `docs/decisions/` rather than by pattern alone, because the verdict function fails Lane B without a linked decision record (section 6) and a well-formed ID naming no record would satisfy a pattern check while linking nothing."
+        },
+        "architecture_adr": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+:docs/adr/(ADR-)?[0-9]{3,4}-[a-z0-9-]+\\.md$",
+          "description": "A repository-scoped in-repo ADR, written `{repo}:docs/adr/NNNN-slug.md` (for example `duetto:docs/adr/0001-staged-authentication-bridge-dual-mint-jwt.md`). This is the second of the two durable decision records policy section 2 item 5 accepts — `apex_decision` covers cross-cutting decisions, this one covers repository-scoped ones. Unlike `apex_decision` it is validated by pattern alone and never resolved: the target lives in another repository, so apex-tools has nothing to open. That is a real weakness of this field rather than an oversight — a well-formed reference to a nonexistent ADR passes — and it is the reason the value carries the repo name, so a human reviewer can find the file. Both the `ADR-NNN-slug.md` and the bare `NNNN-slug.md` stem are accepted because the seeded ADRs (#1983) use both: `frontdoor` numbers with an `ADR-` prefix and three digits, `duetto` with four bare digits. Optional here; requiring at least one of this field or `apex_decision` on a Lane B artifact belongs to the verdict function (#1985/#2061), not to the schema — only it knows which artifacts are in Lane B. Carrying both is permitted: policy section 2 item 5 obliges an author to link a durable record and does not prohibit linking two."
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "arb-review",
+            "approved",
+            "in-progress",
+            "complete"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Who wrote this artifact. Distinct from `owner`, which records who owns the underlying initiative — the two are frequently different people and must not be conflated."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Person or team accountable for the underlying initiative this implementation plan delivers against. Distinct from `author` (who wrote this artifact) — reuses the same key/shape as the `owner` field on team_charter/pod_charter/guild_charter. Optional: an unset value means ownership has not been confirmed and must not be inferred or backfilled without confirmation from the named person."
+        },
+        "parent_prd": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reference to parent PRD ID (e.g., PRD-2026-APX-002)"
+        },
+        "parent_initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Direct internal slug of the governing initiative (docs/spec/08-repo-linkage.md section 3, ratified 2026-07-16). Required (closes G3/DISC-18); the validator additionally errors when the value does not resolve to a real initiative."
+        },
+        "epic_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "One or more JIRA epic IDs linked to this implementation"
+        },
+        "jira_project": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$",
+          "description": "JIRA project key this implementation's tickets live under (same shape as `initiative.jira_project`, DEC-2026-004 clause 2), e.g. `jira_project: QP`. Optional/advisory — distinct from `epic_ids`, which lists specific epics rather than the project prefix."
+        },
+        "tickets": {
+          "type": "object",
+          "description": "JIRA story/task tickets grouped by work area (e.g. backend, frontend, gql), for implementations that track ticket-level detail beyond `epic_ids`.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "section": {
+          "type": "string",
+          "minLength": 1,
+          "description": "For an initiative delivered as multiple per-section implementation plans, the specific section/slice this plan covers. Same key used on sibling PRDs for the same initiative."
+        },
+        "target_quarter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable target delivery quarter, e.g. 'Q3 2026'. Free-text — same shape as `prd.target_quarter`. Null or empty when untargeted."
+        },
+        "duration": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Free-text estimated implementation duration, e.g. '4 weeks (AI-assisted with Claude MPM)'. Null or empty when not estimated."
+        },
+        "parent_tech_spec": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Slug or filename of a companion technical-specification artifact (itself often `type: implementation`) that this implementation plan executes against."
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent-complete estimate for this implementation plan. Distinct from `status`, which tracks lifecycle stage rather than granular completion."
+        },
+        "version_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "version",
+              "date",
+              "change"
+            ],
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "date": {
+                "$ref": "#/definitions/date"
+              },
+              "change": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Per-version changelog for this artifact, same shape as `initiative.version_history`."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "product_proposal": {
+      "x-apex-id-pattern": "^PROP-[0-9]{4}-[A-Z]{2,3}-[0-9]{3}$",
+      "x-apex-path-template": "products/{domain}/{product}/proposals/{id}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": [
+        "delivered",
+        "rejected",
+        "duplicate"
+      ],
+      "x-apex-linkage": [
+        {
+          "field": "related_initiatives",
+          "target_type": "initiative",
+          "resolution": "required"
+        }
+      ],
+      "description": "Product-level proposal — low-friction idea backlog for product teams. ID pattern: PROP-YYYY-XX-NNN (e.g., PROP-2026-GC-001).",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "id",
+        "status",
+        "domain",
+        "product",
+        "author",
+        "source",
+        "created",
+        "updated",
+        "tags"
+      ],
+      "properties": {
+        "type": {
+          "const": "product-proposal"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^PROP-[0-9]{4}-[A-Z]{2,3}-[0-9]{3}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "approved",
+            "in-progress",
+            "delivered",
+            "rejected",
+            "duplicate",
+            "parked"
+          ]
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "analytics",
+            "applications",
+            "data-platform",
+            "engineering-platform",
+            "hotstats",
+            "integrations",
+            "internal",
+            "onboarding"
+          ]
+        },
+        "product": {
+          "$ref": "#/definitions/product_slug"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "customer",
+            "cs",
+            "sales",
+            "product",
+            "engineering",
+            "partner",
+            "other"
+          ]
+        },
+        "source_detail": {
+          "type": "string"
+        },
+        "customer_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "related_products": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/product_slug"
+          }
+        },
+        "related_initiatives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_ia": {
+          "type": "string",
+          "description": "Directory path where this artifact would live if approved. Valid locations are defined in docs/IA.md (e.g. policies/engineering/, products/apex/initiatives/, wiki/r&d/meetings)."
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        },
+        "blocked_on": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "description": "Description of what is blocking this proposal from proceeding."
+              },
+              "owner": {
+                "type": "string",
+                "description": "Optional: team or person responsible for unblocking."
+              },
+              "since": {
+                "$ref": "#/definitions/date",
+                "description": "Optional: date when this blocker was first encountered."
+              },
+              "expected_by": {
+                "oneOf": [
+                  {
+                    "$ref": "#/definitions/date"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Optional: expected resolution date, or null if unknown."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Array of blockers preventing this proposal from starting. Each entry describes a concrete gating condition. No link-resolution; free text is intentional."
+        },
+        "votes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "voter",
+              "sentiment",
+              "date"
+            ],
+            "properties": {
+              "voter": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sentiment": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              "date": {
+                "$ref": "#/definitions/date"
+              },
+              "comment": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "customer"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "required": [
+              "customer_name"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "policy": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "policies/{domain}/{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "superseded_by",
+          "target_type": "policy",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "version",
+        "author",
+        "created",
+        "updated",
+        "effective_date",
+        "approvers",
+        "tags"
+      ],
+      "properties": {
+        "type": {
+          "const": "policy"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "approved",
+            "obsolete",
+            "migrated"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "effective_date": {
+          "$ref": "#/definitions/date"
+        },
+        "approvers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "guide": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "guides/{audience}/{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "version",
+        "author",
+        "created",
+        "updated",
+        "tags"
+      ],
+      "properties": {
+        "type": {
+          "const": "guide"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "approved",
+            "obsolete",
+            "migrated"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "audience": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": [
+            "beginner",
+            "intermediate",
+            "advanced"
+          ]
+        },
+        "time_estimate": {
+          "type": "string"
+        },
+        "related_artifact_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "related_skill": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "wiki": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "wiki/{domain}/{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "superseded_by",
+          "target_type": "wiki",
+          "resolution": "required"
+        }
+      ],
+      "description": "Reference content article. Lives in `wiki/{domain}/`. Lifecycle: draft -> approved -> migrated -> obsolete.",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "version",
+        "author",
+        "created",
+        "updated",
+        "tags"
+      ],
+      "properties": {
+        "type": {
+          "const": "wiki"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "approved",
+            "obsolete",
+            "migrated"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "domain": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Topical categorization (e.g., engineering, product, devops, data-platform, security, onboarding)"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "native",
+            "confluence-migration"
+          ],
+          "description": "Provenance of the article"
+        },
+        "migrated_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Source URL if migrated from another system (e.g., Confluence page URL)"
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "note": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": null,
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "description": "A catch-all for content worth keeping and finding that doesn't fit other artifact types. Minimal contract: type, title, created. Optional: author, updated, tags, parent_initiative, status. Placeable anywhere. Untyped ad-hoc notes remain valid and unaffected.",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "created"
+      ],
+      "properties": {
+        "type": {
+          "const": "note"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "parent_initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Parent initiative directory name, if applicable"
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "discovery": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/discovery/{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "description": "Research input backing an initiative — user interviews, competitive scans, source inventories, survey readouts. Lives in `initiatives/{name}/discovery/`. Path-based identity (no global ID). Modelled on `note`: a minimal contract (`title`, `status`, `created`, `author`) over free-form prose, because discovery is where thinking is captured before it hardens, and a heavy contract there suppresses the capture. Field spellings follow the existing corpus and the neighbouring `note`/`update` definitions — `created`/`updated` for dates and a single `author` string, not `date`/`authors`. IMPORTANT: a `discovery/` directory also holds genuinely freeform research notes carrying NO `type:` at all; those are not artifacts and this contract does not reach them. Declaring a `type:` is what opts a file in — see `adapters/filesystem.py` (`TYPE_OPT_IN_DIRS`) and docs/spec/03-directory-structure.md.",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "created",
+        "author"
+      ],
+      "properties": {
+        "type": {
+          "const": "discovery"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "discovery",
+            "in-progress",
+            "complete"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "parent_initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Parent initiative directory name. Redundant with the file path, which already implies the parent initiative, so it is optional."
+        },
+        "related_initiatives": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Initiative IDs for related work, no ordering implied"
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "rfc": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/rfcs/{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "description": "Request for Comments document scoped to an initiative. Lives in `initiatives/{name}/rfcs/`. Comments happen in apex-companion, not as PRs. Lifecycle: draft -> open -> accepted | rejected | withdrawn.",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "initiative",
+        "domain",
+        "product",
+        "created",
+        "updated",
+        "author"
+      ],
+      "properties": {
+        "type": {
+          "const": "rfc"
+        },
+        "architecture": {
+          "$ref": "#/definitions/architecture_declaration",
+          "x-apex-scaffold": true
+        },
+        "architecture_waivers": {
+          "$ref": "#/definitions/architecture_waivers"
+        },
+        "requires_arb_review": {
+          "type": "boolean",
+          "description": "The declared route into Lane B, and how triggers 4 and 6 — which no tool can derive — reach the gate. Set by the author. Policy section 7 specifies this defaults to `true` on every artifact beneath an initiative carrying `arch_risk_flag`; that inheritance is asserted by policy and is not yet enforced by apex-tools. It is not overridable by anything the monthly audit cannot find: the escape it used to have (`arb_review_waiver_reason`, a bare string with no owner and no expiry) is superseded by an `inherited_entry` entry in `architecture_waivers`."
+        },
+        "apex_decision": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+          "description": "The `DEC-YYYY-NNN` record that governs this artifact. Validated cross-file against `docs/decisions/` rather than by pattern alone, because the verdict function fails Lane B without a linked decision record (section 6) and a well-formed ID naming no record would satisfy a pattern check while linking nothing."
+        },
+        "architecture_adr": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+:docs/adr/(ADR-)?[0-9]{3,4}-[a-z0-9-]+\\.md$",
+          "description": "A repository-scoped in-repo ADR, written `{repo}:docs/adr/NNNN-slug.md` (for example `duetto:docs/adr/0001-staged-authentication-bridge-dual-mint-jwt.md`). This is the second of the two durable decision records policy section 2 item 5 accepts — `apex_decision` covers cross-cutting decisions, this one covers repository-scoped ones. Unlike `apex_decision` it is validated by pattern alone and never resolved: the target lives in another repository, so apex-tools has nothing to open. That is a real weakness of this field rather than an oversight — a well-formed reference to a nonexistent ADR passes — and it is the reason the value carries the repo name, so a human reviewer can find the file. Both the `ADR-NNN-slug.md` and the bare `NNNN-slug.md` stem are accepted because the seeded ADRs (#1983) use both: `frontdoor` numbers with an `ADR-` prefix and three digits, `duetto` with four bare digits. Optional here; requiring at least one of this field or `apex_decision` on a Lane B artifact belongs to the verdict function (#1985/#2061), not to the schema — only it knows which artifacts are in Lane B. Carrying both is permitted: policy section 2 item 5 obliges an author to link a durable record and does not prohibit linking two."
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "open",
+            "accepted",
+            "rejected",
+            "withdrawn"
+          ]
+        },
+        "initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Parent initiative directory name or ID (e.g., aria or I-2026-APX-001)"
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment_deadline": {
+          "$ref": "#/definitions/date",
+          "description": "Optional date when the comment period closes"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "update": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/updates/YYYY-MM-DD-{slug}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "description": "Curated stakeholder update for an initiative. Lives in `initiatives/{name}/updates/YYYY-MM-DD-{slug}.md`. Lifecycle: draft -> published. Path-based identity (no global ID). `version` is optional (#797: updates are write-once records — semver enforcement adds friction without value) and `initiative` is optional (#797: the file path already implies the parent initiative).",
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "date_delivered",
+        "period_start",
+        "period_end",
+        "authors",
+        "created",
+        "updated",
+        "tags"
+      ],
+      "properties": {
+        "type": {
+          "const": "update"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "initiative": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional (#797): parent initiative directory name (e.g., rate-optimization). Redundant with the file path, which already implies the parent initiative."
+        },
+        "date_delivered": {
+          "$ref": "#/definitions/date",
+          "description": "Date this update was sent or published to its audience"
+        },
+        "period_start": {
+          "$ref": "#/definitions/date",
+          "description": "Start of the reporting period this update covers"
+        },
+        "period_end": {
+          "$ref": "#/definitions/date",
+          "description": "End of the reporting period this update covers"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "description": "One or more authors (supports multi-author attribution)"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+          "description": "Optional (#797): updates are write-once records, so semver bumping is not enforced. Retained for authors who want to track revisions."
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "audience": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "internal",
+              "pm",
+              "eng",
+              "exec",
+              "customer",
+              "ELT",
+              "stakeholders",
+              "customers"
+            ]
+          },
+          "description": "Optional audience tags constrained to a controlled vocabulary for dashboard discoverability (#797). `internal`/`pm`/`eng`/`exec`/`customer` are the canonical values; `ELT`/`stakeholders`/`customers` are retained for backward compatibility with existing updates."
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "prd_review": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/PRD-Review.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "parent_prd",
+          "target_type": "prd",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "prd-review"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "complete"
+          ]
+        },
+        "parent_prd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total_score": {
+          "type": "integer"
+        },
+        "rating": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        }
+      },
+      "additionalProperties": true
+    },
+    "retrospective": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/Retrospective.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "initiative_id",
+          "target_type": "initiative",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "initiative_id",
+        "outcome",
+        "author",
+        "created",
+        "updated"
+      ],
+      "properties": {
+        "type": {
+          "const": "retrospective"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "initiative_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "success",
+            "partial",
+            "pivot",
+            "killed"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "metrics_summary": {
+          "type": "object"
+        },
+        "experiment_summary": {
+          "type": "object"
+        },
+        "start_date": {
+          "$ref": "#/definitions/date"
+        },
+        "end_date": {
+          "$ref": "#/definitions/date"
+        },
+        "duration_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "learnings_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "test_manifest": {
+      "x-apex-id-pattern": null,
+      "x-apex-path-template": "products/{domain}/{product}/initiatives/{slug}/TestManifest.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [
+        {
+          "field": "parent_prd",
+          "target_type": "prd",
+          "resolution": "required"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "parent_prd",
+        "created",
+        "updated",
+        "author"
+      ],
+      "properties": {
+        "type": {
+          "const": "test-manifest"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "in-progress",
+            "complete"
+          ]
+        },
+        "parent_prd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/definitions/date"
+        },
+        "updated": {
+          "$ref": "#/definitions/date"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_framework": {
+          "type": "string",
+          "enum": [
+            "pytest",
+            "jest",
+            "vitest",
+            "go-test",
+            "junit",
+            "other"
+          ]
+        },
+        "coverage_summary": {
+          "type": "object",
+          "properties": {
+            "total_criteria": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mapped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmapped": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "tags": {
+          "$ref": "#/definitions/tagList"
+        }
+      },
+      "additionalProperties": true
+    },
+    "doc": {
+      "x-apex-id-pattern": "^DOC-[0-9]{4}-[0-9]{3,4}$",
+      "x-apex-path-template": "documentation-tree/{product}/{id}.md",
+      "x-apex-status-directory-map": null,
+      "x-apex-terminal-statuses": null,
+      "x-apex-linkage": [],
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "type",
+        "product",
+        "template",
+        "audience",
+        "doc_status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^DOC-\\d{4}-\\d{3,4}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "const": "doc"
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/schemaVersion"
+        },
+        "product": {
+          "type": "string"
+        },
+        "initiative_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "initiative",
+            "changelog"
+          ],
+          "description": "Provenance of this DOC artifact: 'initiative' (three-pillar pipeline, traces to initiative_id) or 'changelog' (synthesized from CHANGELOG.md; see changelog_range)."
+        },
+        "changelog_range": {
+          "type": "string",
+          "description": "For source=='changelog' docs: the exact version or inclusive 'vA - vB' range this doc was generated from."
+        },
+        "prd_id": {
+          "type": "string"
+        },
+        "template": {
+          "type": "string",
+          "enum": [
+            "user-guide",
+            "release-note",
+            "internal-prd-update",
+            "api-change-summary",
+            "integration-guide",
+            "onboarding-path",
+            "developer-guide"
+          ]
+        },
+        "audience": {
+          "type": "string",
+          "enum": [
+            "end-user",
+            "system-admin",
+            "developer",
+            "internal"
+          ]
+        },
+        "doc_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "review",
+            "published"
+          ]
+        },
+        "publishing_targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "apex-companion",
+              "salesforce-articles",
+              "confluence"
+            ]
+          }
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generated_by": {
+          "type": "string"
+        },
+        "reviewed_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "published_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "template": {
+                "const": "release-note"
+              }
+            }
+          },
+          "then": {},
+          "else": {
+            "required": [
+              "initiative_id"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": [
+    "type"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "initiative",
+        "experiment",
+        "prd",
+        "team-charter",
+        "pod-charter",
+        "guild-charter",
+        "decision",
+        "design",
+        "proposal",
+        "implementation",
+        "product-proposal",
+        "policy",
+        "guide",
+        "wiki",
+        "update",
+        "rfc",
+        "prd-review",
+        "doc",
+        "retrospective",
+        "test-manifest",
+        "note",
+        "discovery"
+      ]
+    }
+  },
+  "$comment-root-dispatch": "Root dispatch is type-discriminated (if/then on the `type` value) rather than an undiscriminated oneOf, so an unknown `type` yields ONE error (type not in the enum) instead of failing against all 22 branches at once. Validation semantics are otherwise unchanged: `required:[type]` preserves the missing-type failure and each if/then applies exactly one definition. See the canonical-data-model effort (PR1).",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "initiative"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/initiative"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "experiment"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/experiment"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "prd"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/prd"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "team-charter"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/team_charter"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "pod-charter"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/pod_charter"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "guild-charter"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/guild_charter"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "decision"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/decision"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "design"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/design"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "proposal"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/proposal"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "implementation"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/implementation"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "product-proposal"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/product_proposal"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/policy"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "guide"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/guide"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "wiki"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/wiki"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "update"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/update"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "rfc"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/rfc"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "prd-review"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/prd_review"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "doc"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/doc"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "retrospective"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/retrospective"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "test-manifest"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/test_manifest"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "note"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/note"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "discovery"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/discovery"
+      }
+    }
+  ]
+}

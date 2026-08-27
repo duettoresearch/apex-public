@@ -1,0 +1,912 @@
+[
+  {
+    "type": "initiative",
+    "description": "A strategic bet with a hypothesis to validate. The root artifact.",
+    "idPattern": "^I-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/Initiative.md",
+    "statuses": [
+      "discovery",
+      "validated",
+      "delivery",
+      "delivered",
+      "deployed",
+      "shipped",
+      "learning",
+      "success",
+      "killed"
+    ],
+    "terminalStatuses": [
+      "success",
+      "killed"
+    ],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "domain",
+      "product",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "optional": [
+      "arch_risk_flag",
+      "arch_risk_reason",
+      "asset_type_target",
+      "asset_types",
+      "author",
+      "beta_partner",
+      "confidence",
+      "contractual_commitment",
+      "contractual_commitment_customer",
+      "customer_name",
+      "customer_requested",
+      "data_source_description",
+      "deal_impact",
+      "depends_on",
+      "doc_artifact_id",
+      "doc_status",
+      "doc_template",
+      "documentation_enabled",
+      "eng_exec_sponsor",
+      "engineering_category",
+      "enhancement_request",
+      "enhancement_request_details",
+      "feature",
+      "hypothesis",
+      "jira_project",
+      "max_experiments",
+      "metric_target",
+      "new_data_source",
+      "personas",
+      "pm_exec_sponsor",
+      "pod",
+      "project_type",
+      "related_experiments",
+      "related_initiatives",
+      "related_prd",
+      "resources",
+      "roadmap",
+      "rpos_details",
+      "rpos_focused",
+      "schemaVersion",
+      "service_classes",
+      "source_proposal",
+      "status_history",
+      "target_user",
+      "team",
+      "time_box",
+      "version",
+      "version_history"
+    ],
+    "linkage": [
+      {
+        "field": "depends_on",
+        "targetType": "initiative",
+        "resolution": "required"
+      },
+      {
+        "field": "related_initiatives",
+        "targetType": "initiative",
+        "resolution": "required"
+      },
+      {
+        "field": "eng_exec_sponsor",
+        "targetType": "person",
+        "resolution": "conditional"
+      },
+      {
+        "field": "pm_exec_sponsor",
+        "targetType": "person",
+        "resolution": "conditional"
+      },
+      {
+        "field": "jira_project",
+        "targetType": "jira",
+        "resolution": "warn"
+      }
+    ]
+  },
+  {
+    "type": "experiment",
+    "description": "A time-boxed validation of a hypothesis within an initiative.",
+    "idPattern": "^E-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/experiments/{id}.md",
+    "statuses": [
+      "planned",
+      "running",
+      "completed"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "parent_initiative",
+      "status",
+      "hypothesis",
+      "success_criteria",
+      "learning",
+      "created",
+      "updated",
+      "author",
+      "tags"
+    ],
+    "optional": [
+      "actual_sample_size",
+      "arch_risk_flag",
+      "arch_risk_reason",
+      "completed_date",
+      "confidence_level",
+      "minimum_detectable_effect",
+      "sample_size",
+      "schemaVersion",
+      "time_box"
+    ],
+    "linkage": [
+      {
+        "field": "parent_initiative",
+        "targetType": "initiative",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "prd",
+    "description": "Product requirements, generated from an initiative and its evidence.",
+    "idPattern": "^PRD-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/PRD.md",
+    "statuses": [
+      "draft",
+      "review",
+      "approved",
+      "in-development",
+      "deployed",
+      "learning"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "version",
+      "created",
+      "updated",
+      "author",
+      "parent_initiative",
+      "validated_experiments",
+      "approvers"
+    ],
+    "optional": [
+      "approval_status",
+      "epic_id",
+      "executive_sponsor",
+      "priority",
+      "product_area",
+      "schemaVersion",
+      "stakeholders",
+      "tags",
+      "target_quarter"
+    ],
+    "linkage": [
+      {
+        "field": "parent_initiative",
+        "targetType": "initiative",
+        "resolution": "required"
+      },
+      {
+        "field": "epic_id",
+        "targetType": "jira",
+        "resolution": "warn"
+      }
+    ]
+  },
+  {
+    "type": "team-charter",
+    "description": "A team's structure, mission, and ways of working.",
+    "idPattern": "^TC-[0-9]{3}$",
+    "pathTemplate": "teams/TC-NNN-{slug}.md",
+    "statuses": [
+      "draft",
+      "active",
+      "obsolete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "team_name",
+      "mission",
+      "status",
+      "created",
+      "updated",
+      "owner"
+    ],
+    "optional": [
+      "owned_repos",
+      "schemaVersion",
+      "tags"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "pod-charter",
+    "description": "A pod's structure, mission, membership, and ownership.",
+    "idPattern": "^PC-[0-9]{3}$",
+    "pathTemplate": "pods/PC-NNN-{slug}.md",
+    "statuses": [
+      "draft",
+      "active",
+      "obsolete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "team_name",
+      "mission",
+      "status",
+      "created",
+      "updated",
+      "owner"
+    ],
+    "optional": [
+      "members",
+      "owned_repos",
+      "schemaVersion",
+      "status_history",
+      "superseded_by",
+      "tags"
+    ],
+    "linkage": [
+      {
+        "field": "superseded_by",
+        "targetType": "pod-charter",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "guild-charter",
+    "description": "An advisory, standards-setting guild that owns no delivery.",
+    "idPattern": "^GC-[0-9]{3}$",
+    "pathTemplate": "guilds/GC-NNN-{slug}.md",
+    "statuses": [
+      "draft",
+      "active",
+      "obsolete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "guild_name",
+      "mission",
+      "status",
+      "created",
+      "updated",
+      "owner",
+      "elt_sponsor"
+    ],
+    "optional": [
+      "schemaVersion",
+      "superseded_by",
+      "tags"
+    ],
+    "linkage": [
+      {
+        "field": "elt_sponsor",
+        "targetType": "person",
+        "resolution": "warn"
+      },
+      {
+        "field": "superseded_by",
+        "targetType": "guild-charter",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "decision",
+    "description": "An architectural or process decision record, ADR-style.",
+    "idPattern": "^DEC-[0-9]{4}-[0-9]{3}$",
+    "pathTemplate": "docs/decisions/DEC-YYYY-NNN-{slug}.md",
+    "statuses": [
+      "proposed",
+      "accepted",
+      "deprecated",
+      "superseded"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "id",
+      "title",
+      "status",
+      "category",
+      "created",
+      "updated",
+      "author",
+      "approvers"
+    ],
+    "optional": [
+      "apex_decision",
+      "architecture",
+      "architecture_adr",
+      "architecture_waivers",
+      "requires_arb_review",
+      "schemaVersion",
+      "superseded_by",
+      "supersedes",
+      "tags"
+    ],
+    "linkage": [
+      {
+        "field": "superseded_by",
+        "targetType": "decision",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "design",
+    "description": "A technical architecture design scoped to an initiative.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/designs/{name}.md",
+    "statuses": [
+      "proposed",
+      "accepted",
+      "superseded"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "initiative",
+      "product",
+      "author",
+      "created",
+      "updated",
+      "version"
+    ],
+    "optional": [
+      "apex_decision",
+      "architecture",
+      "architecture_adr",
+      "architecture_waivers",
+      "requires_arb_review",
+      "reviewers",
+      "schemaVersion",
+      "superseded_by",
+      "supersedes",
+      "tags"
+    ],
+    "linkage": [
+      {
+        "field": "superseded_by",
+        "targetType": "design",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "proposal",
+    "description": "A global or cross-cutting process proposal open for debate.",
+    "idPattern": null,
+    "pathTemplate": "proposals/{slug}.md",
+    "statuses": [
+      "draft",
+      "review",
+      "approved",
+      "implemented",
+      "rejected"
+    ],
+    "terminalStatuses": [
+      "implemented",
+      "rejected"
+    ],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "author",
+      "created",
+      "updated"
+    ],
+    "optional": [
+      "blocked_on",
+      "id",
+      "loe",
+      "related_artifacts",
+      "reviewers",
+      "schemaVersion",
+      "subject_type",
+      "tags",
+      "target_ia"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "implementation",
+    "description": "An engineering execution plan linked to an approved PRD.",
+    "idPattern": "^IMPL-[0-9]{4}-[A-Z]{2,4}-[0-9]{3}$",
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/Implementation.md",
+    "statuses": [
+      "draft",
+      "review",
+      "arb-review",
+      "approved",
+      "in-progress",
+      "complete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "version",
+      "created",
+      "updated",
+      "author",
+      "parent_prd",
+      "parent_initiative"
+    ],
+    "optional": [
+      "apex_decision",
+      "architecture",
+      "architecture_adr",
+      "architecture_waivers",
+      "duration",
+      "epic_ids",
+      "execution",
+      "jira_project",
+      "owner",
+      "parent_tech_spec",
+      "progress",
+      "requires_arb_review",
+      "schemaVersion",
+      "section",
+      "tags",
+      "target_quarter",
+      "tickets",
+      "version_history"
+    ],
+    "linkage": [
+      {
+        "field": "parent_prd",
+        "targetType": "prd",
+        "resolution": "required"
+      },
+      {
+        "field": "parent_initiative",
+        "targetType": "initiative",
+        "resolution": "required"
+      },
+      {
+        "field": "epic_ids",
+        "targetType": "jira",
+        "resolution": "warn"
+      },
+      {
+        "field": "execution.repositories",
+        "targetType": "repo",
+        "resolution": "warn"
+      },
+      {
+        "field": "execution.boards",
+        "targetType": "jira",
+        "resolution": "warn"
+      }
+    ]
+  },
+  {
+    "type": "product-proposal",
+    "description": "A low-friction product idea in a product folder backlog.",
+    "idPattern": "^PROP-[0-9]{4}-[A-Z]{2,3}-[0-9]{3}$",
+    "pathTemplate": "products/{domain}/{product}/proposals/{id}.md",
+    "statuses": [
+      "draft",
+      "approved",
+      "in-progress",
+      "delivered",
+      "rejected",
+      "duplicate",
+      "parked"
+    ],
+    "terminalStatuses": [
+      "delivered",
+      "rejected",
+      "duplicate"
+    ],
+    "required": [
+      "type",
+      "title",
+      "id",
+      "status",
+      "domain",
+      "product",
+      "author",
+      "source",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "optional": [
+      "blocked_on",
+      "customer_name",
+      "priority",
+      "related_initiatives",
+      "related_products",
+      "schemaVersion",
+      "source_detail",
+      "target_ia",
+      "votes"
+    ],
+    "linkage": [
+      {
+        "field": "related_initiatives",
+        "targetType": "initiative",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "policy",
+    "description": "A standing, binding operating decision.",
+    "idPattern": null,
+    "pathTemplate": "policies/{domain}/{slug}.md",
+    "statuses": [
+      "draft",
+      "approved",
+      "obsolete",
+      "migrated"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "version",
+      "author",
+      "created",
+      "updated",
+      "effective_date",
+      "approvers",
+      "tags"
+    ],
+    "optional": [
+      "schemaVersion",
+      "superseded_by"
+    ],
+    "linkage": [
+      {
+        "field": "superseded_by",
+        "targetType": "policy",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "guide",
+    "description": "A step-by-step task instruction aimed at one audience.",
+    "idPattern": null,
+    "pathTemplate": "guides/{audience}/{slug}.md",
+    "statuses": [
+      "draft",
+      "approved",
+      "obsolete",
+      "migrated"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "version",
+      "author",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "optional": [
+      "audience",
+      "difficulty",
+      "related_artifact_type",
+      "related_skill",
+      "schemaVersion",
+      "time_estimate"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "wiki",
+    "description": "A reference or knowledge-base article.",
+    "idPattern": null,
+    "pathTemplate": "wiki/{domain}/{slug}.md",
+    "statuses": [
+      "draft",
+      "approved",
+      "obsolete",
+      "migrated"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "version",
+      "author",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "optional": [
+      "domain",
+      "migrated_from",
+      "schemaVersion",
+      "source",
+      "superseded_by"
+    ],
+    "linkage": [
+      {
+        "field": "superseded_by",
+        "targetType": "wiki",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "update",
+    "description": "A stakeholder progress update scoped to an initiative.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/updates/YYYY-MM-DD-{slug}.md",
+    "statuses": [
+      "draft",
+      "published"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "date_delivered",
+      "period_start",
+      "period_end",
+      "authors",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "optional": [
+      "audience",
+      "initiative",
+      "schemaVersion",
+      "version"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "rfc",
+    "description": "A request for comments scoped to an initiative.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/rfcs/{slug}.md",
+    "statuses": [
+      "draft",
+      "open",
+      "accepted",
+      "rejected",
+      "withdrawn"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "initiative",
+      "domain",
+      "product",
+      "created",
+      "updated",
+      "author"
+    ],
+    "optional": [
+      "apex_decision",
+      "architecture",
+      "architecture_adr",
+      "architecture_waivers",
+      "comment_deadline",
+      "requires_arb_review",
+      "schemaVersion",
+      "tags"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "prd-review",
+    "description": "A scored quality review of a PRD, gating it before approval.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/PRD-Review.md",
+    "statuses": [
+      "draft",
+      "complete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status"
+    ],
+    "optional": [
+      "created",
+      "parent_prd",
+      "rating",
+      "reviewer",
+      "schemaVersion",
+      "total_score"
+    ],
+    "linkage": [
+      {
+        "field": "parent_prd",
+        "targetType": "prd",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "doc",
+    "description": "Generated product documentation for a shipped initiative.",
+    "idPattern": "^DOC-[0-9]{4}-[0-9]{3,4}$",
+    "pathTemplate": "documentation-tree/{product}/{id}.md",
+    "statuses": [],
+    "terminalStatuses": [],
+    "required": [
+      "id",
+      "title",
+      "type",
+      "product",
+      "template",
+      "audience",
+      "doc_status"
+    ],
+    "optional": [
+      "changelog_range",
+      "generated_at",
+      "generated_by",
+      "initiative_id",
+      "prd_id",
+      "published_at",
+      "publishing_targets",
+      "reviewed_by",
+      "schemaVersion",
+      "source"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "retrospective",
+    "description": "A post-initiative retrospective capturing outcome and learnings.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/Retrospective.md",
+    "statuses": [
+      "draft",
+      "published"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "initiative_id",
+      "outcome",
+      "author",
+      "created",
+      "updated"
+    ],
+    "optional": [
+      "duration_days",
+      "end_date",
+      "experiment_summary",
+      "learnings_count",
+      "metrics_summary",
+      "schemaVersion",
+      "start_date",
+      "tags"
+    ],
+    "linkage": [
+      {
+        "field": "initiative_id",
+        "targetType": "initiative",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "test-manifest",
+    "description": "A map from a PRDacceptance criteria to the tests that cover them.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/TestManifest.md",
+    "statuses": [
+      "draft",
+      "in-progress",
+      "complete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "parent_prd",
+      "created",
+      "updated",
+      "author"
+    ],
+    "optional": [
+      "coverage_summary",
+      "schemaVersion",
+      "tags",
+      "test_framework"
+    ],
+    "linkage": [
+      {
+        "field": "parent_prd",
+        "targetType": "prd",
+        "resolution": "required"
+      }
+    ]
+  },
+  {
+    "type": "note",
+    "description": "A catch-all for content worth keeping that fits no other type.",
+    "idPattern": null,
+    "pathTemplate": null,
+    "statuses": [
+      "draft",
+      "active",
+      "archived"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "created"
+    ],
+    "optional": [
+      "author",
+      "parent_initiative",
+      "schemaVersion",
+      "status",
+      "tags",
+      "updated"
+    ],
+    "linkage": []
+  },
+  {
+    "type": "discovery",
+    "description": "Research input backing an initiative: interviews, scans, readouts.",
+    "idPattern": null,
+    "pathTemplate": "products/{domain}/{product}/initiatives/{slug}/discovery/{slug}.md",
+    "statuses": [
+      "draft",
+      "active",
+      "discovery",
+      "in-progress",
+      "complete"
+    ],
+    "terminalStatuses": [],
+    "required": [
+      "type",
+      "title",
+      "status",
+      "created",
+      "author"
+    ],
+    "optional": [
+      "parent_initiative",
+      "related_initiatives",
+      "schemaVersion",
+      "tags",
+      "updated"
+    ],
+    "linkage": []
+  }
+]

@@ -1,0 +1,255 @@
+{
+  "cliCommands": [
+    "arch-classify",
+    "archive",
+    "check-codeowners",
+    "check-links",
+    "classify-pr",
+    "generate-apex-yaml",
+    "migrate",
+    "new",
+    "status-change",
+    "track-warnings",
+    "validate",
+    "verify-pr-type"
+  ],
+  "workflows": [
+    {
+      "file": "apex-daily-status.yml",
+      "name": "APEX Daily Status Report"
+    },
+    {
+      "file": "architecture-rules-advisory.yml",
+      "name": "architecture-rules (advisory)"
+    },
+    {
+      "file": "assign-reviewers.yml",
+      "name": "Assign Reviewers from Pod Config"
+    },
+    {
+      "file": "auto-merge.yml",
+      "name": "Auto-merge on approval"
+    },
+    {
+      "file": "check-codeowners.yml",
+      "name": "Check CODEOWNERS Dead Paths"
+    },
+    {
+      "file": "check-file-scope.yml",
+      "name": "Check File Scope"
+    },
+    {
+      "file": "check-pod-merge.yml",
+      "name": "Check Pod Merge Eligibility"
+    },
+    {
+      "file": "delete-closed-pr-branch.yml",
+      "name": "Delete head branch on PR close"
+    },
+    {
+      "file": "deploy-docs.yml",
+      "name": "Deploy Docs"
+    },
+    {
+      "file": "label-pr.yml",
+      "name": "Label PR by Artifact Type"
+    },
+    {
+      "file": "pr-triage.yml",
+      "name": "Weekly PR Triage"
+    },
+    {
+      "file": "repos-all-advisory.yml",
+      "name": "repos-all (advisory)"
+    },
+    {
+      "file": "repos-all-drift.yml",
+      "name": "repos-all structural drift (offline)"
+    },
+    {
+      "file": "stale-initiatives.yml",
+      "name": "Stale Initiatives Report"
+    },
+    {
+      "file": "stale.yml",
+      "name": "Stale PR Reaper"
+    },
+    {
+      "file": "test-packages.yml",
+      "name": "Test Packages"
+    },
+    {
+      "file": "tier-classifier.yml",
+      "name": "PR Tier Classifier"
+    },
+    {
+      "file": "track-validator-warnings.yml",
+      "name": "Track Validator Warnings"
+    },
+    {
+      "file": "validate-apex.yml",
+      "name": "Validate APEX Artifacts"
+    },
+    {
+      "file": "verify-pr-type.yml",
+      "name": "Verify PR Artifact Type"
+    },
+    {
+      "file": "weekly-health-sweep.yml",
+      "name": "Weekly Health Sweep"
+    }
+  ],
+  "skills": [
+    "apex-artifacts",
+    "apex-charter",
+    "apex-commit",
+    "apex-dashboard",
+    "apex-decision",
+    "apex-epic",
+    "apex-experiment",
+    "apex-generate-docs",
+    "apex-git-setup",
+    "apex-guide",
+    "apex-help",
+    "apex-implementation",
+    "apex-initiative",
+    "apex-learn",
+    "apex-measure",
+    "apex-meeting",
+    "apex-meeting-prep",
+    "apex-newsletter",
+    "apex-newsletter-edition",
+    "apex-policy",
+    "apex-pr-approve",
+    "apex-pr-comment",
+    "apex-pr-create",
+    "apex-pr-report",
+    "apex-pr-request-changes",
+    "apex-pr-review",
+    "apex-prd",
+    "apex-prd-review",
+    "apex-proposal",
+    "apex-report",
+    "apex-session-sync",
+    "apex-setup",
+    "apex-ship",
+    "apex-status",
+    "apex-tests",
+    "apex-transition",
+    "apex-update-initiative",
+    "apex-validate",
+    "apex-vote",
+    "apex-wiki",
+    "duetto-apex-maintenance"
+  ],
+  "skillCategories": [
+    {
+      "category": "Setup",
+      "skills": [
+        "apex-help",
+        "apex-setup",
+        "apex-git-setup"
+      ]
+    },
+    {
+      "category": "Proposals",
+      "skills": [
+        "apex-proposal",
+        "apex-vote",
+        "apex-wiki"
+      ]
+    },
+    {
+      "category": "Discovery",
+      "skills": [
+        "apex-initiative",
+        "apex-experiment"
+      ]
+    },
+    {
+      "category": "Specification",
+      "skills": [
+        "apex-prd",
+        "apex-prd-review"
+      ]
+    },
+    {
+      "category": "Planning",
+      "skills": [
+        "apex-tests",
+        "apex-implementation",
+        "apex-epic"
+      ]
+    },
+    {
+      "category": "Delivery",
+      "skills": [
+        "apex-ship"
+      ]
+    },
+    {
+      "category": "Learning",
+      "skills": [
+        "apex-measure",
+        "apex-learn"
+      ]
+    },
+    {
+      "category": "Documentation & Comms",
+      "skills": [
+        "apex-generate-docs",
+        "apex-newsletter",
+        "apex-newsletter-edition"
+      ]
+    },
+    {
+      "category": "Records",
+      "skills": [
+        "apex-decision",
+        "apex-policy",
+        "apex-guide",
+        "apex-charter"
+      ]
+    },
+    {
+      "category": "Reference",
+      "skills": [
+        "apex-artifacts"
+      ]
+    },
+    {
+      "category": "Status & Workflow",
+      "skills": [
+        "apex-status",
+        "apex-dashboard",
+        "apex-report",
+        "apex-transition",
+        "apex-update-initiative",
+        "apex-validate",
+        "apex-commit",
+        "apex-session-sync",
+        "apex-meeting-prep",
+        "duetto-apex-maintenance"
+      ]
+    },
+    {
+      "category": "PR",
+      "skills": [
+        "apex-pr-create",
+        "apex-pr-report",
+        "apex-pr-review",
+        "apex-pr-approve",
+        "apex-pr-comment",
+        "apex-pr-request-changes"
+      ]
+    },
+    {
+      "category": "Deprecated",
+      "skills": [
+        "apex-meeting"
+      ]
+    }
+  ],
+  "companionDescription": "Lightweight web UI, REST API, and CLI that lets non-technical contributors browse, search, and summarize APEX artifacts — without Claude Code, git, or a terminal.",
+  "companionMcpTools": 68
+}

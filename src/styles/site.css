@@ -1,0 +1,592 @@
+/* ==========================================================================
+   apex-public — site layer
+   --------------------------------------------------------------------------
+   Everything here builds on @duettoresearch/marketing-ds. No color is declared
+   as a literal: every value is a var() into the design system's tokens, so the
+   palette has exactly one definition and this file cannot drift from it.
+   Two things the DS does not cover, which this file adds:
+     1. Long-form prose. The DS ships marketing sections, not article typography,
+        and this site renders whole specification documents.
+     2. Responsiveness. The DS assumes a fixed 94px gutter and a 96px hero.
+   ==========================================================================*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Anchored headings must clear the sticky header. */
+  scroll-padding-top: calc(var(--header-h) + var(--space-5));
+}
+
+body {
+  margin: 0;
+  background: var(--bg-canvas);
+  color: var(--fg-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+}
+
+a {
+  color: var(--dt-teal);
+}
+a:hover {
+  color: var(--dt-teal-deep);
+}
+
+/* Keyboard focus uses the functional teal, never the brand chartreuse. */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--dt-teal);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.site-skip {
+  position: absolute;
+  left: -9999px;
+}
+.site-skip:focus {
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 100;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-canvas);
+  color: var(--dt-teal);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+/* The brand mark is a single dark color; inverting it renders it white on the
+   midnight header without shipping a second asset. */
+.site-logo {
+  height: 18px;
+  width: auto;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+.mkt-header__left a {
+  display: flex;
+  align-items: center;
+}
+
+.site-wordmark {
+  margin-left: var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-on-dark);
+  color: var(--fg-on-dark-primary);
+  font-weight: var(--weight-bold);
+  font-size: var(--fs-body-sm);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.mkt-nav__link {
+  text-decoration: none;
+}
+.mkt-nav__link[aria-current='page'] {
+  color: var(--fg-on-dark-accent);
+}
+
+.site-nav-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-on-dark);
+  border-radius: var(--radius-sm);
+  color: var(--fg-on-dark-primary);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-body-sm);
+  cursor: pointer;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+
+.site-section {
+  padding-block: var(--space-8);
+  padding-inline: var(--page-gutter);
+}
+.site-section--tight {
+  padding-block: var(--space-7);
+}
+.site-inner {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.site-measure {
+  max-width: 820px;
+}
+
+.site-hero-note {
+  color: var(--fg-on-dark-secondary);
+  font-size: var(--fs-body-sm);
+  margin-top: var(--space-6);
+}
+
+/* Home hero: the DS hero is built for a full-bleed photo this site does not
+   have, so the min-height and bottom padding are pulled in. */
+.mkt-hero-band {
+  min-height: 0;
+  padding-block: var(--space-10) var(--space-9);
+}
+
+/* ── Statistic tiles ────────────────────────────────────────────────────── */
+
+.site-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border-light);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.site-stat {
+  background: var(--bg-canvas);
+  padding: var(--space-5) var(--space-6);
+}
+.site-stat__value {
+  font-family: var(--font-display);
+  font-weight: var(--weight-light);
+  font-size: var(--fs-h1);
+  line-height: 1;
+  letter-spacing: var(--tracking-display-lg);
+  color: var(--fg-primary);
+}
+.site-stat__label {
+  margin-top: var(--space-3);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-loose);
+  color: var(--fg-secondary);
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+
+.site-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+}
+.site-card {
+  display: block;
+  padding: var(--space-5);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-canvas);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+.site-card:hover {
+  border-color: var(--dt-teal);
+  transform: translateY(-2px);
+  color: inherit;
+}
+.site-card__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  font-size: var(--fs-h4);
+  letter-spacing: var(--tracking-display-md);
+  color: var(--fg-primary);
+  margin-bottom: var(--space-3);
+}
+.site-card__body {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-loose);
+  color: var(--fg-secondary);
+}
+
+/* ── Long-form prose ────────────────────────────────────────────────────── */
+
+.prose {
+  font-size: var(--fs-page-body);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-primary);
+  overflow-wrap: break-word;
+}
+.prose > *:first-child {
+  margin-top: 0;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-display-lg);
+  line-height: var(--lh-heading);
+  color: var(--fg-primary);
+  scroll-margin-top: calc(var(--header-h) + var(--space-5));
+}
+.prose h1 {
+  font-size: var(--fs-h1);
+  margin: 0 0 var(--space-6);
+}
+.prose h2 {
+  font-size: var(--fs-h2);
+  margin: var(--space-8) 0 var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-light);
+}
+.prose h3 {
+  font-size: var(--fs-h3);
+  margin: var(--space-7) 0 var(--space-3);
+}
+.prose h4 {
+  font-size: var(--fs-h4);
+  margin: var(--space-6) 0 var(--space-3);
+}
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote {
+  margin: 0 0 var(--space-5);
+}
+.prose li {
+  margin-bottom: var(--space-2);
+}
+.prose li > ul,
+.prose li > ol {
+  margin-top: var(--space-2);
+  margin-bottom: 0;
+}
+.prose strong {
+  font-weight: var(--weight-semibold);
+}
+.prose blockquote {
+  padding: var(--space-3) var(--space-5);
+  border-left: 3px solid var(--dt-teal);
+  background: var(--bg-accent-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.prose blockquote > *:last-child {
+  margin-bottom: 0;
+}
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--border-light);
+  margin: var(--space-7) 0;
+}
+
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--bg-canvas-alt);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+}
+
+/* A wide code block scrolls inside itself; the page body never scrolls
+   sideways. */
+.prose pre {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-5);
+  background: var(--bg-dark);
+  color: var(--fg-on-dark-primary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-loose);
+}
+.prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Tables get their own scroll container for the same reason. */
+.prose table,
+.site-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+  margin: 0 0 var(--space-5);
+}
+.prose thead th,
+.site-table thead th {
+  text-align: left;
+  vertical-align: bottom;
+  font-weight: var(--weight-bold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--border-light);
+  white-space: nowrap;
+}
+.prose tbody td,
+.site-table tbody td {
+  vertical-align: top;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  line-height: var(--lh-body-loose);
+}
+.prose tbody tr:hover,
+.site-table tbody tr:hover {
+  background: var(--bg-accent-soft);
+}
+
+.site-scroll-x {
+  overflow-x: auto;
+  margin-bottom: var(--space-5);
+}
+.site-scroll-x > table {
+  margin-bottom: 0;
+}
+
+/* Mermaid source is published as an unrendered code block rather than pretending
+   to be a diagram. */
+.prose pre code.language-mermaid {
+  opacity: 0.75;
+}
+
+/* ── Documents: sidebar + article ───────────────────────────────────────── */
+
+.doc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-8);
+  align-items: start;
+}
+.doc-toc {
+  position: sticky;
+  top: calc(var(--header-h) + var(--space-5));
+  max-height: calc(100vh - var(--header-h) - var(--space-8));
+  overflow-y: auto;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-loose);
+  border-left: 1px solid var(--border-light);
+  padding-left: var(--space-5);
+}
+.doc-toc__heading {
+  font-weight: var(--weight-bold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  margin-bottom: var(--space-4);
+}
+.doc-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.doc-toc li {
+  margin-bottom: var(--space-2);
+}
+.doc-toc li[data-depth='3'] {
+  padding-left: var(--space-4);
+}
+.doc-toc a {
+  text-decoration: none;
+  color: var(--fg-secondary);
+}
+.doc-toc a:hover {
+  color: var(--dt-teal);
+}
+
+.doc-source {
+  margin-top: var(--space-3);
+  font-size: var(--fs-body-sm);
+  color: var(--fg-secondary);
+}
+
+/* ── Schema page ────────────────────────────────────────────────────────── */
+
+.schema-type {
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--border-light);
+  scroll-margin-top: calc(var(--header-h) + var(--space-5));
+}
+.schema-type__name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-h3);
+  color: var(--fg-primary);
+  margin: 0 0 var(--space-3);
+}
+.schema-type__desc {
+  color: var(--fg-secondary);
+  margin: 0 0 var(--space-5);
+  max-width: 720px;
+}
+.schema-grid {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--space-3) var(--space-5);
+  font-size: var(--fs-body);
+}
+.schema-grid dt {
+  font-weight: var(--weight-bold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  padding-top: 3px;
+}
+.schema-grid dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-body-sm);
+  padding: 2px 8px;
+  margin: 0 6px 6px 0;
+  border-radius: 3px;
+  background: var(--bg-canvas-alt);
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+.tag--accent {
+  background: var(--bg-accent-soft);
+  color: var(--duetto-olive-deep);
+}
+.tag--muted {
+  color: var(--fg-secondary);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.mkt-footer {
+  padding-block: var(--space-7);
+}
+.site-footer__inner {
+  max-width: 1180px;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5) var(--space-8);
+  align-items: center;
+  justify-content: space-between;
+}
+.site-footer__logo {
+  height: 16px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+.site-footer__note {
+  font-size: var(--fs-body-sm);
+  color: var(--fg-on-dark-secondary);
+}
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  font-size: var(--fs-body-sm);
+}
+.site-footer__links a {
+  color: var(--duetto-pebble);
+  text-decoration: none;
+}
+.site-footer__links a:hover {
+  color: var(--fg-on-dark-accent);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .doc-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc-toc {
+    position: static;
+    max-height: none;
+    border-left: 0;
+    border-top: 1px solid var(--border-light);
+    padding-left: 0;
+    padding-top: var(--space-5);
+    order: 2;
+  }
+}
+
+@media (max-width: 860px) {
+  :root {
+    --page-gutter: var(--space-5);
+  }
+  .mkt-header {
+    padding-inline: var(--space-5);
+    flex-wrap: wrap;
+    height: auto;
+    padding-block: var(--space-3);
+    gap: var(--space-3);
+  }
+  .mkt-header__left {
+    gap: var(--space-4);
+  }
+  .site-nav-toggle {
+    display: block;
+  }
+  .mkt-nav {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+  }
+  .mkt-nav[data-open='true'] {
+    display: flex;
+  }
+  .mkt-hero-band__title {
+    font-size: var(--fs-section);
+  }
+  .mkt-hero-band__lead {
+    font-size: var(--fs-h4);
+  }
+  .mkt-hero-band {
+    padding-block: var(--space-8) var(--space-7);
+  }
+  .prose h1 {
+    font-size: var(--fs-h2);
+  }
+  .prose h2 {
+    font-size: var(--fs-h3);
+  }
+  .prose h3 {
+    font-size: var(--fs-h4);
+  }
+  .prose {
+    font-size: var(--fs-body);
+  }
+  .schema-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .schema-grid dt {
+    margin-top: var(--space-3);
+  }
+  .site-footer__inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

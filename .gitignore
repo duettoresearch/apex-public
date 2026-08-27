@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.vercel
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Agent worktrees.
+.claude/worktrees/
+
+# The private half of the leak denylist: specific people, codenames, chat ids,
+# and handles. This repository is public — committing the list would publish
+# exactly what it exists to suppress. See scripts/lib/forbidden.ts.
+.leak-denylist.local
