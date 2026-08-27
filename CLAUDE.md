@@ -105,3 +105,20 @@ never a focus ring, link, or state indicator.
 Follow [`.claude/skills/apex-public-sync/SKILL.md`](.claude/skills/apex-public-sync/SKILL.md).
 It covers fetching both sources, regenerating, running the gate, reading the diff,
 deciding which authored copy has gone stale, and opening the pull request.
+
+## Automation
+
+Two workflows run this repository. `.github/workflows/ci.yml` runs lint,
+typecheck, test, and build on every pull request and every push to `main`; its
+job is named `ci` because branch protection requires that exact check name, and
+its build step ends in the leak scan over `dist/`. `.github/workflows/content-refresh.yml`
+runs Mondays at 06:00 UTC and on demand: it clones both private sources, runs
+`npm run content`, the gate, the tests and the build, then opens or updates one
+pull request on `content/auto-refresh`. It needs two repository secrets,
+`APEX_READ_TOKEN` (fine-grained, Contents: read on the two source repositories)
+and `LEAK_DENYLIST` (the private token list), and fails on its first step naming
+whichever is missing. It never sets `LEAK_DENYLIST_OPTIONAL` — a snapshot
+generated without the private denylist is the failure this whole design prevents.
+Dependabot proposes grouped npm and actions updates weekly. Operating details,
+including how to review a refresh pull request and how to rotate the token, are
+in the README under "Operating this site".

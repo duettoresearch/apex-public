@@ -1,0 +1,59 @@
+# Why: Every change lands through a pull request, and the leak gate is the one
+# check that must never be skipped — a name that reaches `dist/` is not
+# recoverable once the site deploys. Running the same five commands a maintainer
+# runs locally means a green check and a clean local run mean the same thing.
+# What: Installs from the lockfile on Node 20, then lints, typechecks, tests,
+# and builds. `npm run build` ends in the leak scan over `dist/`, so the gate
+# runs against finished output rather than source.
+# Test: `actionlint .github/workflows/ci.yml`
+#
+# The job is named `ci` because branch protection requires that exact check name.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # A pull request opened by a workflow using GITHUB_TOKEN does not start other
+  # workflows, so the refresh branch would never get its required `ci` check.
+  # workflow_dispatch is exempt from that rule, and content-refresh dispatches
+  # this workflow against the refresh branch for exactly that reason.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The content step inside `npm run build` no-ops here: no APEX source is
+      # configured, and none should be. The private denylist is absent for the
+      # same reason — this job validates a snapshot generated on a machine that
+      # had it, using the generic patterns alone.
+      - name: Build and scan dist
+        run: npm run build

@@ -155,3 +155,161 @@ src/
   tests/              The leak gate as a test
 content.config.ts     The source allowlist and its strip rules
 ```
+
+## Operating this site
+
+Everything from here down is what a maintainer needs after handoff.
+
+### The two workflows
+
+| Workflow          | File                                    | Trigger                                  | Needs       |
+| ----------------- | --------------------------------------- | ---------------------------------------- | ----------- |
+| `ci`              | `.github/workflows/ci.yml`              | every pull request, every push to `main` | nothing     |
+| `content-refresh` | `.github/workflows/content-refresh.yml` | Mondays 06:00 UTC, or **Run workflow**   | two secrets |
+
+`ci` runs `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, and
+`npm run build` on Node 20 — the same five commands you run locally. The build
+ends in the leak scan over `dist/`, so a leak fails the check. The job is named
+`ci` because branch protection requires that exact check name.
+
+`content-refresh` clones both private sources with a read-only token,
+regenerates `src/generated/` and `public/schema/`, runs the gate, the tests and
+the build, then opens or updates one pull request on the branch
+`content/auto-refresh`. When the snapshot did not change it logs
+`no content changes` and stops.
+
+### The two secrets the refresh needs
+
+Add both under **Settings → Secrets and variables → Actions → New repository
+secret**. Until they exist, `content-refresh` fails on its first step and names
+the one that is missing.
+
+| Secret            | What it is                            | Scope                                                                                                                                |
+| ----------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `APEX_READ_TOKEN` | A fine-grained personal access token  | Repository access limited to `duettoresearch/APEX` and `duettoresearch/apex-companion`; permission **Contents: read**. Nothing else. |
+| `LEAK_DENYLIST`   | The private half of the leak denylist | Not a credential — the token list itself, newline- or comma-separated. Same content as a local `.leak-denylist.local`.               |
+
+`npm run content` refuses to run when `LEAK_DENYLIST` is empty, and the workflow
+never sets `LEAK_DENYLIST_OPTIONAL`. That refusal is the safeguard: a snapshot
+generated with the generic patterns alone is how a name reaches the site.
+
+The refresh also passes `APEX_READ_TOKEN` to the content step as `GH_TOKEN`, so
+the pipeline can read the merged-pull-request count. Without a token that one
+statistic is omitted rather than guessed, and its tile disappears from `/stats`.
+
+### Reviewing a refresh pull request
+
+1. Read the `src/generated/` diff. Numbers moving is expected. A new document
+   body, a new path, or a name appearing anywhere in it is not — treat that as a
+   gate failure and fix it with a strip rule in `content.config.ts`.
+2. Open the workflow run and find the `[leak-check]` lines. The first one names
+   the tier that ran. It must report tokens loaded, not `WARNING`.
+3. Check the authored copy under `content/` against any number that moved. The
+   pipeline updates the statistics; it does not update prose that quotes them.
+4. Merge. Vercel deploys `main`.
+
+A pull request opened with the default `GITHUB_TOKEN` does not start other
+workflows, so `ci` would never run on the refresh branch and the pull request
+could not satisfy the required check. `content-refresh` therefore dispatches `ci`
+against `content/auto-refresh` as its last step; check runs are keyed by the
+branch head SHA, so the check appears on the pull request. Nothing to do by hand.
+
+If that dispatch step fails, its error names the fallback: close and reopen the
+pull request, which starts `ci` on the branch.
+
+### Running a refresh locally
+
+You need checkouts of both private repositories and the private denylist.
+
+```bash
+cp .env.example .env                 # then fill in the two *_REPO_PATH values
+printf '%s\n' token-one token-two > .leak-denylist.local   # gitignored
+npm run sync                         # content → leak-check → test → build
+```
+
+`npm run sync` is the local equivalent of the workflow. Read the
+`[leak-check] private denylist: N tokens loaded` line before trusting the run.
+
+### Rotating `APEX_READ_TOKEN`
+
+1. Mint a replacement fine-grained token with the same two repositories and
+   **Contents: read**, and an expiry you will actually remember.
+2. Update the `APEX_READ_TOKEN` repository secret with the new value.
+3. Run `content-refresh` from the Actions tab with **Run workflow**. A green run
+   proves the new token works.
+4. Revoke the old token.
+
+Do the replacement before the revocation. A revoked token makes the clone step
+fail, and the failure looks identical to the secret being absent.
+
+### Swapping the vendored design system for the package
+
+`src/vendor/marketing-ds/` is a copy, not a dependency, because
+`@duettoresearch/marketing-ds` is not published yet.
+[`src/vendor/marketing-ds/README.md`](src/vendor/marketing-ds/README.md) records
+the source commit and the exact swap steps. `.npmrc` already points the
+`@duettoresearch` scope at GitHub Packages, so the short version is: install with
+a `read:packages` token, change the two imports in `src/main.tsx`, delete the
+vendored directory, then run the five commands.
+
+### Adding a page
+
+1. Export a component from `src/pages/routes.tsx`.
+2. Add its `<Route>` to the table in `src/App.tsx`.
+3. Add it to `NAV` in `src/components/Layout.tsx` if it belongs in the header.
+4. Style it with `.mkt-*` classes and design-system tokens. Do not add a color
+   literal to `src/styles/site.css` — the palette has exactly one definition.
+
+A page that renders APEX content reads it through `src/lib/content.ts`, never by
+importing `src/generated/*.json` directly. Publishing a document that is not yet
+in the snapshot means adding it to `ALLOWLIST` in `content.config.ts` with its
+strip rules, then regenerating.
+
+### What the leak gate covers, and what it does not
+
+It covers the text of `src/generated/`, `public/`, and `dist/`: the generic shape
+patterns in `scripts/lib/forbidden.ts`, the private token list, ticket-shaped
+keys outside a vetted allowlist, and concrete product paths. It also reads the
+images in `public/` with Tesseract and reports any word it can make out.
+
+It does not cover:
+
+- **Images, reliably.** The OCR pass warns; it never fails the build, and it
+  skips itself where Tesseract is not installed, saying so in its output. A name
+  legible in a PNG can therefore still ship. The real defence for a picture is
+  `scripts/prepare-hero-graph.ts`, which destroys the label pixels and refuses
+  to write a file while OCR can still read one. Read every image before
+  committing it; that is the second checkbox on the pull request template.
+- **Authored prose.** Anything you write in `content/`, in a route file, or in
+  this README is scanned for the same patterns only once it reaches
+  `src/generated/` or `dist/`. Prose that describes an internal thing in words
+  the patterns do not match passes the gate and still discloses it.
+- **Fonts and other non-text assets**, by the same reasoning as images.
+- **Judgement.** The gate catches shapes. Whether a number, a count, or a
+  paraphrase is safe to publish is a decision only a person makes.
+
+### Vercel
+
+| Fact                  | Value                                                |
+| --------------------- | ---------------------------------------------------- |
+| Team                  | `duetto`                                             |
+| Project               | `apex-public`                                        |
+| Production domain     | `apex.duetto.ai`                                     |
+| Deployment protection | **Off, deliberately** — the site is public by design |
+| Build command         | `npm run build`                                      |
+| Output directory      | `dist`                                               |
+
+Deployment protection stays off. Turning it on puts an authentication wall in
+front of a site whose entire purpose is to be readable by people outside the
+company. It is not a leak control; the leak gate is.
+
+Set no environment variables on the Vercel project. With none set, the build
+cannot reach the private repositories at all — it renders the committed
+snapshot, which is the safe default and the reason the snapshot is committed.
+
+### Branch rule
+
+`main` takes pull requests only. The required check is `ci`. `.github/CODEOWNERS`
+assigns every path to `@duettoresearch/technical-services`; a personal handle
+must never appear there, because a personal code-host handle is one of the
+categories the gate exists to keep out of a public repository.
