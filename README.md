@@ -162,10 +162,10 @@ Everything from here down is what a maintainer needs after handoff.
 
 ### The two workflows
 
-| Workflow          | File                                    | Trigger                                  | Needs       |
-| ----------------- | --------------------------------------- | ---------------------------------------- | ----------- |
-| `ci`              | `.github/workflows/ci.yml`              | every pull request, every push to `main` | nothing     |
-| `content-refresh` | `.github/workflows/content-refresh.yml` | Mondays 06:00 UTC, or **Run workflow**   | two secrets |
+| Workflow          | File                                    | Trigger                                  | Needs   |
+| ----------------- | --------------------------------------- | ---------------------------------------- | ------- |
+| `ci`              | `.github/workflows/ci.yml`              | every pull request, every push to `main` | nothing |
+| `content-refresh` | `.github/workflows/content-refresh.yml` | Mondays 06:00 UTC, or **Run workflow**   | secrets |
 
 `ci` runs `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, and
 `npm run build` on Node 20 — the same five commands you run locally. The build
@@ -178,24 +178,38 @@ the build, then opens or updates one pull request on the branch
 `content/auto-refresh`. When the snapshot did not change it logs
 `no content changes` and stops.
 
-### The two secrets the refresh needs
+### The secrets the refresh needs
 
-Add both under **Settings → Secrets and variables → Actions → New repository
+Add them under **Settings → Secrets and variables → Actions → New repository
 secret**. Until they exist, `content-refresh` fails on its first step and names
-the one that is missing.
+what is missing.
 
-| Secret            | What it is                            | Scope                                                                                                                                |
-| ----------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `APEX_READ_TOKEN` | A fine-grained personal access token  | Repository access limited to `duettoresearch/APEX` and `duettoresearch/apex-companion`; permission **Contents: read**. Nothing else. |
-| `LEAK_DENYLIST`   | The private half of the leak denylist | Not a credential — the token list itself, newline- or comma-separated. Same content as a local `.leak-denylist.local`.               |
+A read credential for the two private sources, either form:
+
+| Secret                                 | What it is                                      | Scope                                                                                                                                                           |
+| -------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APEX_APP_ID` + `APEX_APP_PRIVATE_KEY` | A GitHub App — preferred                        | The app must be installed on `duettoresearch/APEX` and `duettoresearch/apex-companion` with **Contents: read**. The workflow mints a short-lived token per run. |
+| `APEX_READ_TOKEN`                      | A fine-grained personal access token — fallback | Repository access limited to the same two repositories; permission **Contents: read**. Nothing else.                                                            |
+
+Prefer the app: its token expires when the run ends and it belongs to no
+person. The workflow uses the app pair when both secrets are set and falls back
+to `APEX_READ_TOKEN` otherwise, and logs which one it used.
+
+And the denylist, required either way:
+
+| Secret          | What it is                            | Scope                                                                                                                  |
+| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `LEAK_DENYLIST` | The private half of the leak denylist | Not a credential — the token list itself, newline- or comma-separated. Same content as a local `.leak-denylist.local`. |
 
 `npm run content` refuses to run when `LEAK_DENYLIST` is empty, and the workflow
 never sets `LEAK_DENYLIST_OPTIONAL`. That refusal is the safeguard: a snapshot
 generated with the generic patterns alone is how a name reaches the site.
 
-The refresh also passes `APEX_READ_TOKEN` to the content step as `GH_TOKEN`, so
-the pipeline can read the merged-pull-request count. Without a token that one
-statistic is omitted rather than guessed, and its tile disappears from `/stats`.
+The refresh also passes the resolved credential to the content step as
+`GH_TOKEN`, so the pipeline can read the merged-pull-request count. An app token
+qualifies when the app has **Pull requests: read** or **Contents: read**. If the
+count comes back empty the pipeline omits that one statistic rather than
+guessing it, and its tile disappears from `/stats`.
 
 ### Reviewing a refresh pull request
 
@@ -230,13 +244,21 @@ npm run sync                         # content → leak-check → test → build
 `npm run sync` is the local equivalent of the workflow. Read the
 `[leak-check] private denylist: N tokens loaded` line before trusting the run.
 
-### Rotating `APEX_READ_TOKEN`
+### Rotating the read credential
+
+A GitHub App has nothing to rotate on a schedule — its per-run token expires by
+itself. Rotate its private key only when you have reason to: generate a new key
+on the app, update `APEX_APP_PRIVATE_KEY`, then run `content-refresh` with
+**Run workflow** and delete the old key once the run is green.
+
+For the `APEX_READ_TOKEN` fallback:
 
 1. Mint a replacement fine-grained token with the same two repositories and
    **Contents: read**, and an expiry you will actually remember.
 2. Update the `APEX_READ_TOKEN` repository secret with the new value.
 3. Run `content-refresh` from the Actions tab with **Run workflow**. A green run
-   proves the new token works.
+   proves the new token works. The first log line of the resolve step names
+   which credential the run used.
 4. Revoke the old token.
 
 Do the replacement before the revocation. A revoked token makes the clone step
