@@ -209,9 +209,13 @@ statistic is omitted rather than guessed, and its tile disappears from `/stats`.
 4. Merge. Vercel deploys `main`.
 
 A pull request opened with the default `GITHUB_TOKEN` does not start other
-workflows, so `ci` does not run on the refresh branch. The refresh workflow
-already ran those same commands over the same tree. To see the `ci` check on the
-branch anyway, close and reopen the pull request.
+workflows, so `ci` would never run on the refresh branch and the pull request
+could not satisfy the required check. `content-refresh` therefore dispatches `ci`
+against `content/auto-refresh` as its last step; check runs are keyed by the
+branch head SHA, so the check appears on the pull request. Nothing to do by hand.
+
+If that dispatch step fails, its error names the fallback: close and reopen the
+pull request, which starts `ci` on the branch.
 
 ### Running a refresh locally
 
@@ -265,13 +269,17 @@ strip rules, then regenerating.
 
 It covers the text of `src/generated/`, `public/`, and `dist/`: the generic shape
 patterns in `scripts/lib/forbidden.ts`, the private token list, ticket-shaped
-keys outside a vetted allowlist, and concrete product paths.
+keys outside a vetted allowlist, and concrete product paths. It also reads the
+images in `public/` with Tesseract and reports any word it can make out.
 
 It does not cover:
 
-- **Binary images.** A screenshot under `public/` is never scanned. A name
-  legible in a PNG ships. Read every image before committing it — this is the
-  first checkbox on the pull request template for that reason.
+- **Images, reliably.** The OCR pass warns; it never fails the build, and it
+  skips itself where Tesseract is not installed, saying so in its output. A name
+  legible in a PNG can therefore still ship. The real defence for a picture is
+  `scripts/prepare-hero-graph.ts`, which destroys the label pixels and refuses
+  to write a file while OCR can still read one. Read every image before
+  committing it; that is the second checkbox on the pull request template.
 - **Authored prose.** Anything you write in `content/`, in a route file, or in
   this README is scanned for the same patterns only once it reaches
   `src/generated/` or `dist/`. Prose that describes an internal thing in words
