@@ -43,13 +43,20 @@ customer names, employee names, internal hostnames, and live ticket keys.
    correct — they validate a snapshot generated on a machine that had the full
    list. The scanner always prints which tier it ran with; read that line.
 
-5. **Categories that must never reach published output.** Internal hostnames,
+5. **Images under `public/` must not contain legible names** — see
+   `scripts/prepare-hero-graph.ts`. A screenshot is not covered by the string
+   scan: names inside it are pixels. Any image built from an internal capture
+   goes through that script, which pixellates every label and refuses to write a
+   file while OCR can still read one. `npm run leak-check` re-reads the images
+   afterwards and warns on anything readable. Never commit the source capture.
+
+6. **Categories that must never reach published output.** Internal hostnames,
    chat channel ids, personal code-host handles, people's names, internal
    project or product codenames, links into the private source repositories
    (such a link is both a 404 and a disclosure), and live ticket keys. When you
    write documentation about this rule, name the CATEGORY — never an instance.
 
-6. **`src/generated/` is generated.** Never hand-edit it. Run `npm run content`.
+7. **`src/generated/` is generated.** Never hand-edit it. Run `npm run content`.
 
 ## Commands
 

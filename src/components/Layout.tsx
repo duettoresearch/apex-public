@@ -11,6 +11,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import type { Doc, TocEntry } from '../lib/content.ts';
+import { DuettoLogo } from './DuettoLogo.tsx';
 
 const NAV: readonly { to: string; label: string }[] = [
   { to: '/how-it-works', label: 'How it works' },
@@ -28,7 +29,7 @@ export function Header(): ReactNode {
     <header className="mkt-header">
       <div className="mkt-header__left">
         <Link to="/" aria-label="APEX home">
-          <img className="site-logo" src="/duetto-logo_blk.svg" alt="Duetto" />
+          <DuettoLogo className="site-logo" />
           <span className="site-wordmark">APEX</span>
         </Link>
       </div>
@@ -64,7 +65,7 @@ export function Footer(): ReactNode {
     <footer className="mkt-footer">
       <div className="site-footer__inner">
         <div>
-          <img className="site-footer__logo" src="/duetto-logo_blk.svg" alt="Duetto" />
+          <DuettoLogo className="site-footer__logo" />
           <p className="site-footer__note">
             © Duetto. APEX is an internal product development framework.
           </p>
