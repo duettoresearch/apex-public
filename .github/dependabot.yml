@@ -1,0 +1,38 @@
+# Why: The site is small and rarely touched, so an unattended dependency tree is
+# the most likely way it stops building. Weekly grouped updates keep the review
+# burden to roughly one pull request per ecosystem.
+# What: Weekly npm updates with minor and patch versions batched into a single
+# pull request, and weekly updates of the actions pinned in .github/workflows.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+    groups:
+      # Majors stay separate so a breaking change is never buried in a batch.
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+    groups:
+      actions-all:
+        patterns:
+          - '*'

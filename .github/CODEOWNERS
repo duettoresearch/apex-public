@@ -1,0 +1,6 @@
+# Ownership is a team, never a personal handle: this repository is public, and a
+# personal code-host handle is one of the categories the leak gate exists to keep
+# out of it (see scripts/lib/forbidden.ts, rule `org-handle`).
+#
+# Every path, including the leak gate itself and the content allowlist.
+* @duettoresearch/technical-services

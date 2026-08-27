@@ -1,0 +1,174 @@
+# Why: The site renders from a committed snapshot, so it goes stale the moment
+# APEX moves on. Regenerating on a schedule and proposing the result as a pull
+# request keeps the numbers current without giving the deployment any access to
+# the private repositories, and keeps a human between a regenerated snapshot and
+# a published one.
+# What: Weekly (and on demand) clones both private sources with a read-only
+# token, regenerates `src/generated/` and `public/schema/`, runs the leak gate,
+# the tests, and the build, then opens or updates one pull request when the
+# snapshot actually changed.
+# Test: `actionlint .github/workflows/content-refresh.yml`
+#
+# Two repository secrets are required; the preflight step below names them and
+# says where to add them. The workflow fails loudly rather than silently
+# producing a snapshot the leak gate never fully checked.
+name: content-refresh
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: content-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: refresh
+    runs-on: ubuntu-latest
+    env:
+      # The private half of the leak denylist. `npm run content` refuses to
+      # generate without it. That refusal is the fail-safe, not an obstacle:
+      # generating with the generic patterns alone is exactly how a name would
+      # reach the published site. LEAK_DENYLIST_OPTIONAL is never set here.
+      LEAK_DENYLIST: ${{ secrets.LEAK_DENYLIST }}
+    steps:
+      - name: Preflight — required secrets
+        env:
+          APEX_READ_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          missing=0
+          where='repository Settings → Secrets and variables → Actions → New repository secret'
+          if [ -z "${APEX_READ_TOKEN:-}" ]; then
+            echo "::error::Missing secret APEX_READ_TOKEN. Add it under ${where}. It must be a fine-grained personal access token with Contents: read on duettoresearch/APEX and duettoresearch/apex-companion."
+            missing=1
+          fi
+          if [ -z "${LEAK_DENYLIST:-}" ]; then
+            echo "::error::Missing secret LEAK_DENYLIST. Add it under ${where}. It holds the private leak-gate tokens, newline- or comma-separated. Without it the content step refuses to generate, by design."
+            missing=1
+          fi
+          if [ "${missing}" -ne 0 ]; then
+            echo "::error::content-refresh cannot run until the secrets above exist."
+            exit 1
+          fi
+          echo 'Both required secrets are present.'
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Clone the private sources
+        env:
+          APEX_READ_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          dest="${RUNNER_TEMP}/apex-sources"
+          mkdir -p "${dest}"
+          for repo in APEX apex-companion; do
+            # Default branch only, but full history: the stats read `rev-list`
+            # and `shortlog`, which a shallow clone would undercount.
+            git clone --single-branch \
+              "https://x-access-token:${APEX_READ_TOKEN}@github.com/duettoresearch/${repo}.git" \
+              "${dest}/${repo}"
+            # Drop the credential from the clone's config now that fetching is done.
+            git -C "${dest}/${repo}" remote set-url origin \
+              "https://github.com/duettoresearch/${repo}.git"
+          done
+          echo "APEX_REPO_PATH=${dest}/APEX" >> "${GITHUB_ENV}"
+          echo "APEX_COMPANION_REPO_PATH=${dest}/apex-companion" >> "${GITHUB_ENV}"
+
+      - name: Regenerate the snapshot
+        env:
+          # Lets the pipeline read the merged pull request count through `gh`.
+          # Without a token that stat is omitted rather than guessed, and the
+          # tile silently disappears from /stats on every scheduled run.
+          GH_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
+        run: npm run content
+
+      - name: Leak gate
+        run: npm run leak-check
+
+      - name: Test
+        run: npm test
+
+      - name: Build and scan dist
+        env:
+          # Unset the sources so the content step inside `npm run build` no-ops.
+          # The snapshot was generated one step ago; regenerating it here would
+          # only cost minutes and risk a second, different result.
+          APEX_REPO_PATH: ''
+          APEX_COMPANION_REPO_PATH: ''
+        run: npm run build
+
+      - name: Detect content changes
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- src/generated public/schema)" ]; then
+            echo 'changed=false' >> "${GITHUB_OUTPUT}"
+            echo 'no content changes'
+            exit 0
+          fi
+          # Intent-to-add so a newly generated file appears in `git diff --stat`.
+          git add -N -- src/generated public/schema
+          {
+            echo 'changed=true'
+            echo "today=$(date -u +%Y-%m-%d)"
+            echo 'stat<<DIFFSTAT'
+            git diff --stat -- src/generated public/schema
+            echo 'DIFFSTAT'
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Ensure the content-refresh label exists
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create content-refresh \
+            --color 1D76DB \
+            --description 'Scheduled snapshot refresh from the private APEX sources' \
+            --force
+
+      - name: Open or update the refresh pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: content/auto-refresh
+          add-paths: |
+            src/generated
+            public/schema
+          commit-message: |
+            content: refresh from APEX (${{ steps.diff.outputs.today }})
+
+            🤖🤖🤖 Generated with trusty-mpm — https://github.com/bobmatnyc/trusty-tools
+          title: 'content: refresh from APEX (${{ steps.diff.outputs.today }})'
+          labels: content-refresh
+          body: |
+            Scheduled regeneration of `src/generated/` and `public/schema/` from
+            `duettoresearch/APEX` and `duettoresearch/apex-companion`.
+
+            This run already passed `npm run content`, `npm run leak-check`,
+            `npm test`, and `npm run build` with the private denylist loaded.
+            Read the diff for facts that changed, then merge — Vercel deploys
+            `main`.
+
+            ```
+            ${{ steps.diff.outputs.stat }}
+            ```
+
+            🤖🤖🤖 Generated with trusty-mpm — https://github.com/bobmatnyc/trusty-tools
