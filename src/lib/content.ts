@@ -48,7 +48,6 @@ export interface ArtifactType {
 }
 
 export interface Stats {
-  readonly generatedAt: string;
   readonly sourceRef: string;
   readonly trackedMarkdown: number;
   readonly artifactsByType: Readonly<Record<string, number>>;
@@ -108,6 +107,17 @@ export function page(slug: string): Doc {
 export function doc(slug: string): Doc | undefined {
   return docs.find((d) => d.slug === slug);
 }
+
+/**
+ * Why: The snapshot used to carry the timestamp of the run that produced it, so
+ * a refresh that found nothing new still changed a file and opened a pull
+ * request. Freshness belongs to the build, not to the committed content.
+ * What: The UTC date this bundle was built, stamped in by `vite.config.ts`.
+ * Falls back to an empty string so a bundle built without the define renders
+ * nothing rather than the literal `undefined`.
+ * Test: `the committed snapshot carries no wall-clock timestamp`
+ */
+export const BUILD_DATE: string = (import.meta.env.VITE_BUILD_TIME ?? '').slice(0, 10);
 
 /** Formats an integer with thousands separators. */
 export function num(n: number): string {

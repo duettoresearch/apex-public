@@ -176,7 +176,10 @@ ends in the leak scan over `dist/`, so a leak fails the check. The job is named
 regenerates `src/generated/` and `public/schema/`, runs the gate, the tests and
 the build, then opens or updates one pull request on the branch
 `content/auto-refresh`. When the snapshot did not change it logs
-`no content changes` and stops.
+`no content changes` and stops — nothing in `src/generated/` records when the
+run happened, so a week in which APEX did not move produces no pull request at
+all. The site states its own freshness from a build-time constant instead
+(`VITE_BUILD_TIME`, defined in `vite.config.ts`).
 
 ### The secrets the refresh needs
 
@@ -186,10 +189,10 @@ what is missing.
 
 A read credential for the two private sources, either form:
 
-| Secret                                 | What it is                                      | Scope                                                                                                                                                           |
-| -------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `APEX_APP_ID` + `APEX_APP_PRIVATE_KEY` | A GitHub App — preferred                        | The app must be installed on `duettoresearch/APEX` and `duettoresearch/apex-companion` with **Contents: read**. The workflow mints a short-lived token per run. |
-| `APEX_READ_TOKEN`                      | A fine-grained personal access token — fallback | Repository access limited to the same two repositories; permission **Contents: read**. Nothing else.                                                            |
+| Secret                                 | What it is                                      | Scope                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APEX_APP_ID` + `APEX_APP_PRIVATE_KEY` | A GitHub App — preferred                        | Installed on `duettoresearch/APEX` and `duettoresearch/apex-companion` with **Contents: read**, and on this repository with **Contents: write** and **Pull requests: write** — the same token opens the pull request. The workflow mints a short-lived token per run. |
+| `APEX_READ_TOKEN`                      | A fine-grained personal access token — fallback | Repository access limited to the same two repositories; permission **Contents: read**. Nothing else.                                                                                                                                                                  |
 
 Prefer the app: its token expires when the run ends and it belongs to no
 person. The workflow uses the app pair when both secrets are set and falls back
@@ -197,9 +200,9 @@ to `APEX_READ_TOKEN` otherwise, and logs which one it used.
 
 And the denylist, required either way:
 
-| Secret          | What it is                            | Scope                                                                                                                  |
-| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `LEAK_DENYLIST` | The private half of the leak denylist | Not a credential — the token list itself, newline- or comma-separated. Same content as a local `.leak-denylist.local`. |
+| Secret          | What it is                            | Scope                                                                                                                                                                                                                |
+| --------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LEAK_DENYLIST` | The private half of the leak denylist | Not a credential — the token list itself, newline- or comma-separated. Paste a local `.leak-denylist.local` verbatim: blank lines and `#` comments are dropped from both forms, so both report the same token count. |
 
 `npm run content` refuses to run when `LEAK_DENYLIST` is empty, and the workflow
 never sets `LEAK_DENYLIST_OPTIONAL`. That refusal is the safeguard: a snapshot
@@ -222,14 +225,15 @@ guessing it, and its tile disappears from `/stats`.
    pipeline updates the statistics; it does not update prose that quotes them.
 4. Merge. Vercel deploys `main`.
 
-A pull request opened with the default `GITHUB_TOKEN` does not start other
-workflows, so `ci` would never run on the refresh branch and the pull request
-could not satisfy the required check. `content-refresh` therefore dispatches `ci`
-against `content/auto-refresh` as its last step; check runs are keyed by the
-branch head SHA, so the check appears on the pull request. Nothing to do by hand.
+`ci` runs on a refresh pull request like on any other, because the app token
+opens it. A pull request opened with the default `GITHUB_TOKEN` starts no other
+workflow, so the refresh branch would carry no `ci` check and could never
+satisfy the required check.
 
-If that dispatch step fails, its error names the fallback: close and reopen the
-pull request, which starts `ci` on the branch.
+That limitation still stands on a `APEX_READ_TOKEN`-only setup: the app is what
+opens the pull request, and without it the workflow falls back to
+`GITHUB_TOKEN`, logs a warning saying so, and the fallback is to close and
+reopen the pull request — which starts `ci` on the branch.
 
 ### Running a refresh locally
 

@@ -14,10 +14,10 @@ on:
   pull_request:
   push:
     branches: [main]
-  # A pull request opened by a workflow using GITHUB_TOKEN does not start other
-  # workflows, so the refresh branch would never get its required `ci` check.
-  # workflow_dispatch is exempt from that rule, and content-refresh dispatches
-  # this workflow against the refresh branch for exactly that reason.
+  # A pull request opened by a workflow using GITHUB_TOKEN starts no other
+  # workflow, so a branch whose pull request was opened that way carries no
+  # `ci` check. content-refresh opens its pull request as a GitHub App to avoid
+  # that; this trigger is the manual escape hatch for a setup that has no app.
   workflow_dispatch:
 
 permissions:

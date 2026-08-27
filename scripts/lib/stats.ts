@@ -7,13 +7,18 @@
  * What: Computes the aggregate statistics rendered on /stats and interpolated
  * into the authored copy.
  * Test: `counts artifacts by type`, `emits no path or person name`
+ *
+ * Nothing here reads the wall clock except `daysActive`, which is a fact a
+ * reader sees. A run timestamp used to sit in this object; it made every
+ * refresh a content change even when APEX had not moved, so the whole diff of
+ * a scheduled pull request was one clock reading. The site states its freshness
+ * from a build-time constant instead — see `BUILD_DATE` in `src/lib/content.ts`.
  */
 
 import { execFileSync } from 'node:child_process';
 import { commitCount, contributorCount, listTree, log, type RepoSource } from './source.ts';
 
 export interface Stats {
-  readonly generatedAt: string;
   readonly sourceRef: string;
 
   readonly trackedMarkdown: number;
@@ -149,7 +154,6 @@ export function collectStats(apex: RepoSource, companionMcpTools?: number): Stat
   const merged = mergedPullRequests();
 
   const stats: Stats = {
-    generatedAt: new Date().toISOString(),
     sourceRef: apex.ref,
 
     trackedMarkdown,

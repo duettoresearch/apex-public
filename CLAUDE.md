@@ -114,12 +114,17 @@ job is named `ci` because branch protection requires that exact check name, and
 its build step ends in the leak scan over `dist/`. `.github/workflows/content-refresh.yml`
 runs Mondays at 06:00 UTC and on demand: it clones both private sources, runs
 `npm run content`, the gate, the tests and the build, then opens or updates one
-pull request on `content/auto-refresh`. Its read credential comes from either a
+pull request on `content/auto-refresh` — and opens none at all when the
+regenerated snapshot is identical, which it is whenever APEX has not moved,
+because nothing in `src/generated/` records the time of the run. Its read credential comes from either a
 GitHub App (`APEX_APP_ID` and `APEX_APP_PRIVATE_KEY`, preferred — installed on
 the two source repositories with Contents: read, minted fresh each run) or
 `APEX_READ_TOKEN` (fine-grained, same two repositories, Contents: read) as the
 fallback; it uses the app when both app secrets are set and logs which source it
-used. `LEAK_DENYLIST` (the private token list) is required either way, and the
+used. The app token also opens the pull request, which is what makes `ci` run on
+the refresh branch — a pull request opened with `GITHUB_TOKEN` starts no other
+workflow, so on a token-only setup the refresh branch carries no `ci` check
+until somebody closes and reopens the pull request. `LEAK_DENYLIST` (the private token list) is required either way, and the
 workflow fails on its first step naming whatever is missing. It never sets
 `LEAK_DENYLIST_OPTIONAL` — a snapshot
 generated without the private denylist is the failure this whole design prevents.

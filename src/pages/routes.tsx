@@ -9,7 +9,16 @@
 import { type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DocPage, Page, Prose } from '../components/Layout.tsx';
-import { docs, doc, num, page, schemaTypes, stats, tooling } from '../lib/content.ts';
+import {
+  BUILD_DATE,
+  docs,
+  doc,
+  num,
+  page,
+  schemaTypes,
+  stats,
+  tooling,
+} from '../lib/content.ts';
 
 /* ---------------------------------------------------------------- Home -- */
 
@@ -281,7 +290,8 @@ export function Stats(): ReactNode {
           fontSize: 'var(--fs-body-sm)',
         }}
       >
-        Generated {stats.generatedAt.slice(0, 10)} from <code>{stats.sourceRef}</code>.
+        Snapshot of <code>{stats.sourceRef}</code>
+        {BUILD_DATE ? `, built ${BUILD_DATE}` : ''}.
       </p>
     </Page>
   );
