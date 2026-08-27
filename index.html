@@ -10,7 +10,13 @@
     />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#0E2124" />
-    <link rel="icon" href="/Duetto-logo-color.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- The hero graph is the largest paint above the fold; without this the
+         browser only discovers it after the bundle has mounted the route. -->
+    <link rel="preload" as="image" href="/hero-graph.webp" type="image/webp" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="APEX" />

@@ -5,7 +5,9 @@
  * rules — is what the release actually depends on.
  * What: Scans `src/generated/` and `public/` (and, with `--dist`, the built
  * `dist/`) against the generic patterns plus the private denylist, and exits
- * non-zero on any hit.
+ * non-zero on any hit. Also reads the images in `public/` with Tesseract when
+ * it is installed, warning on any word it can make out — a name rendered into a
+ * picture is invisible to a string scan.
  * Test: mirrored as a Vitest suite in `src/tests/leak.test.ts`, so `npm test`
  *       fails on a leak even when nobody runs this script.
  *
@@ -19,8 +21,10 @@
  *   tsx scripts/leak-check.ts --dist   # also scan dist/
  */
 
+import { execFileSync } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -32,6 +36,63 @@ import {
 } from './lib/forbidden.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Image types the OCR pass reads. */
+const IMAGE_EXTENSIONS = ['.png', '.webp', '.jpg', '.jpeg'];
+
+/**
+ * Reads the images in `public/` and reports any word Tesseract recognises.
+ *
+ * Warns rather than fails, for two reasons. Tesseract is not installed
+ * everywhere this gate runs, so a hard failure would turn a missing tool into a
+ * broken build; and OCR invents short words out of texture, so a hit is a
+ * prompt to look rather than proof of a leak. The real defence for the one
+ * image this applies to is `scripts/prepare-hero-graph.ts`, which destroys the
+ * label pixels and refuses to write a file while any survive. This pass exists
+ * to catch the next image somebody drops into `public/` without running it.
+ */
+async function ocrImages(dir: string): Promise<void> {
+  try {
+    execFileSync('which', ['tesseract'], { stdio: 'ignore' });
+  } catch {
+    console.log('[leak-check] tesseract not installed — skipping the image text scan');
+    return;
+  }
+
+  const images: string[] = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isFile() && IMAGE_EXTENSIONS.includes(extname(entry.name).toLowerCase())) {
+      images.push(join(dir, entry.name));
+    }
+  }
+  if (images.length === 0) return;
+
+  const tmp = mkdtempSync(join(tmpdir(), 'leak-ocr-'));
+  try {
+    for (const image of images) {
+      const stem = join(tmp, 'ocr');
+      try {
+        execFileSync('tesseract', [image, stem, '--psm', '11', 'tsv'], { stdio: 'ignore' });
+      } catch {
+        continue;
+      }
+      const words = readFileSync(`${stem}.tsv`, 'utf8')
+        .split('\n')
+        .slice(1)
+        .map((line) => (line.split('\t')[11] ?? '').trim())
+        .filter((text) => /[A-Za-z]{3,}/.test(text));
+      if (words.length > 0) {
+        console.warn(
+          `[leak-check] WARNING ${image}: ${words.length} word(s) readable — ` +
+            `${words.slice(0, 6).join(', ')}`,
+        );
+      }
+    }
+    console.log(`[leak-check] ${images.length} image(s) scanned for readable text in ${dir}`);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
 
 /** Every scannable file under a directory, recursively. */
 export async function collectScannable(dir: string): Promise<string[]> {
@@ -66,6 +127,9 @@ async function main(): Promise<void> {
       total += findings.length;
     }
   }
+
+  const publicDir = join(ROOT, 'public');
+  if (existsSync(publicDir)) await ocrImages(publicDir);
 
   if (total > 0) {
     console.error(`[leak-check] FAILED — ${total} forbidden string(s) in published output`);

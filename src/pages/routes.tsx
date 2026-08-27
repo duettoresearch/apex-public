@@ -19,6 +19,19 @@ export function Home(): ReactNode {
   return (
     <>
       <section className="mkt-hero-band">
+        {/* Above the fold, so it loads eagerly and index.html preloads it. The
+            graph is decoration — its labels were destroyed by
+            scripts/prepare-hero-graph.ts and it carries no information a reader
+            needs — so it is hidden from assistive technology. */}
+        <img
+          className="site-hero-graph"
+          src="/hero-graph.webp"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+        />
+        <div className="site-hero-scrim" aria-hidden="true" />
         <div className="mkt-hero-band__inner site-inner">
           <div className="mkt-hero-band__eyebrow">AI Product Execution</div>
           <h1 className="mkt-hero-band__title">Product management, as code.</h1>
