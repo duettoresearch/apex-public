@@ -114,10 +114,14 @@ job is named `ci` because branch protection requires that exact check name, and
 its build step ends in the leak scan over `dist/`. `.github/workflows/content-refresh.yml`
 runs Mondays at 06:00 UTC and on demand: it clones both private sources, runs
 `npm run content`, the gate, the tests and the build, then opens or updates one
-pull request on `content/auto-refresh`. It needs two repository secrets,
-`APEX_READ_TOKEN` (fine-grained, Contents: read on the two source repositories)
-and `LEAK_DENYLIST` (the private token list), and fails on its first step naming
-whichever is missing. It never sets `LEAK_DENYLIST_OPTIONAL` — a snapshot
+pull request on `content/auto-refresh`. Its read credential comes from either a
+GitHub App (`APEX_APP_ID` and `APEX_APP_PRIVATE_KEY`, preferred — installed on
+the two source repositories with Contents: read, minted fresh each run) or
+`APEX_READ_TOKEN` (fine-grained, same two repositories, Contents: read) as the
+fallback; it uses the app when both app secrets are set and logs which source it
+used. `LEAK_DENYLIST` (the private token list) is required either way, and the
+workflow fails on its first step naming whatever is missing. It never sets
+`LEAK_DENYLIST_OPTIONAL` — a snapshot
 generated without the private denylist is the failure this whole design prevents.
 Dependabot proposes grouped npm and actions updates weekly. Operating details,
 including how to review a refresh pull request and how to rotate the token, are

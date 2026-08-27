@@ -9,9 +9,11 @@
 # snapshot actually changed.
 # Test: `actionlint .github/workflows/content-refresh.yml`
 #
-# Two repository secrets are required; the preflight step below names them and
-# says where to add them. The workflow fails loudly rather than silently
-# producing a snapshot the leak gate never fully checked.
+# The read credential comes from either a GitHub App (APEX_APP_ID +
+# APEX_APP_PRIVATE_KEY, preferred) or the APEX_READ_TOKEN personal access token
+# (fallback); LEAK_DENYLIST is required either way. The preflight step below
+# names what is missing and says where to add it. The workflow fails loudly
+# rather than silently producing a snapshot the leak gate never fully checked.
 name: content-refresh
 
 on:
@@ -41,15 +43,30 @@ jobs:
       # reach the published site. LEAK_DENYLIST_OPTIONAL is never set here.
       LEAK_DENYLIST: ${{ secrets.LEAK_DENYLIST }}
     steps:
+      # The `secrets` context is not available in a step-level `if:`, so this
+      # step maps the secrets into `env` and publishes `have_app` for the mint
+      # step to gate on.
       - name: Preflight — required secrets
+        id: preflight
         env:
+          APEX_APP_ID: ${{ secrets.APEX_APP_ID }}
+          APEX_APP_PRIVATE_KEY: ${{ secrets.APEX_APP_PRIVATE_KEY }}
           APEX_READ_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
         run: |
           set -euo pipefail
           missing=0
           where='repository Settings → Secrets and variables → Actions → New repository secret'
-          if [ -z "${APEX_READ_TOKEN:-}" ]; then
-            echo "::error::Missing secret APEX_READ_TOKEN. Add it under ${where}. It must be a fine-grained personal access token with Contents: read on duettoresearch/APEX and duettoresearch/apex-companion."
+          have_app=false
+          if [ -n "${APEX_APP_ID:-}" ] && [ -n "${APEX_APP_PRIVATE_KEY:-}" ]; then
+            have_app=true
+          fi
+          echo "have_app=${have_app}" >> "${GITHUB_OUTPUT}"
+          if [ "${have_app}" = 'true' ]; then
+            echo 'Source credential: app-token (GitHub App).'
+          elif [ -n "${APEX_READ_TOKEN:-}" ]; then
+            echo 'Source credential: pat (APEX_READ_TOKEN). Prefer a GitHub App — see the README.'
+          else
+            echo "::error::No read credential for the private sources. Add it under ${where}. Preferred: APEX_APP_ID and APEX_APP_PRIVATE_KEY for a GitHub App installed on duettoresearch/APEX and duettoresearch/apex-companion with Contents: read. Fallback: APEX_READ_TOKEN, a fine-grained personal access token with Contents: read on the same two repositories."
             missing=1
           fi
           if [ -z "${LEAK_DENYLIST:-}" ]; then
@@ -60,7 +77,7 @@ jobs:
             echo "::error::content-refresh cannot run until the secrets above exist."
             exit 1
           fi
-          echo 'Both required secrets are present.'
+          echo 'Required secrets are present.'
 
       - uses: actions/checkout@v4
 
@@ -72,9 +89,36 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Clone the private sources
+      - name: Mint app token (preferred credential)
+        id: app
+        if: steps.preflight.outputs.have_app == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APEX_APP_ID }}
+          private-key: ${{ secrets.APEX_APP_PRIVATE_KEY }}
+          owner: duettoresearch
+          repositories: APEX,apex-companion
+
+      # One place decides the credential, so the clone and the content step
+      # cannot disagree about which one they used.
+      - name: Resolve the read credential
         env:
-          APEX_READ_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+          PAT: ${{ secrets.APEX_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${APP_TOKEN:-}" ]; then
+            token="${APP_TOKEN}"
+            source='app-token'
+          else
+            token="${PAT}"
+            source='pat'
+          fi
+          echo "::add-mask::${token}"
+          echo "APEX_TOKEN=${token}" >> "${GITHUB_ENV}"
+          echo "Using ${source} to read the private sources."
+
+      - name: Clone the private sources
         run: |
           set -euo pipefail
           dest="${RUNNER_TEMP}/apex-sources"
@@ -83,7 +127,7 @@ jobs:
             # Default branch only, but full history: the stats read `rev-list`
             # and `shortlog`, which a shallow clone would undercount.
             git clone --single-branch \
-              "https://x-access-token:${APEX_READ_TOKEN}@github.com/duettoresearch/${repo}.git" \
+              "https://x-access-token:${APEX_TOKEN}@github.com/duettoresearch/${repo}.git" \
               "${dest}/${repo}"
             # Drop the credential from the clone's config now that fetching is done.
             git -C "${dest}/${repo}" remote set-url origin \
@@ -96,8 +140,10 @@ jobs:
         env:
           # Lets the pipeline read the merged pull request count through `gh`.
           # Without a token that stat is omitted rather than guessed, and the
-          # tile silently disappears from /stats on every scheduled run.
-          GH_TOKEN: ${{ secrets.APEX_READ_TOKEN }}
+          # tile silently disappears from /stats on every scheduled run. An app
+          # token qualifies when the app has Pull requests: read or Contents:
+          # read; if the count comes back empty the field is simply omitted.
+          GH_TOKEN: ${{ env.APEX_TOKEN }}
         run: npm run content
 
       - name: Leak gate
