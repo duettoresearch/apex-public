@@ -79,9 +79,9 @@ jobs:
           fi
           echo 'Required secrets are present.'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -92,7 +92,7 @@ jobs:
       - name: Mint app token (preferred credential)
         id: app
         if: steps.preflight.outputs.have_app == 'true'
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.APEX_APP_ID }}
           private-key: ${{ secrets.APEX_APP_PRIVATE_KEY }}
@@ -193,7 +193,7 @@ jobs:
       - name: Open or update the refresh pull request
         id: pr
         if: steps.diff.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
