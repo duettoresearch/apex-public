@@ -14,6 +14,12 @@
 # (fallback); LEAK_DENYLIST is required either way. The preflight step below
 # names what is missing and says where to add it. The workflow fails loudly
 # rather than silently producing a snapshot the leak gate never fully checked.
+#
+# The app token also opens the pull request. A pull request opened with the
+# default GITHUB_TOKEN starts no other workflow, so the refresh branch carried
+# no `ci` check and could not satisfy the required check; one opened by an app
+# starts `ci` like any other pull request. With APEX_READ_TOKEN alone the old
+# limitation stands and the fallback is to close and reopen the pull request.
 name: content-refresh
 
 on:
@@ -25,8 +31,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  # For `gh workflow run ci.yml` on the refresh branch, see the last step.
-  actions: write
 
 concurrency:
   group: content-refresh
@@ -89,6 +93,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      # apex-public is in the list because the same token opens the pull
+      # request here, not only because it reads the two sources.
       - name: Mint app token (preferred credential)
         id: app
         if: steps.preflight.outputs.have_app == 'true'
@@ -97,7 +103,7 @@ jobs:
           app-id: ${{ secrets.APEX_APP_ID }}
           private-key: ${{ secrets.APEX_APP_PRIVATE_KEY }}
           owner: duettoresearch
-          repositories: APEX,apex-companion
+          repositories: APEX,apex-companion,apex-public
 
       # One place decides the credential, so the clone and the content step
       # cannot disagree about which one they used.
@@ -117,6 +123,31 @@ jobs:
           echo "::add-mask::${token}"
           echo "APEX_TOKEN=${token}" >> "${GITHUB_ENV}"
           echo "Using ${source} to read the private sources."
+
+      # The credential that opens the pull request, and the identity its commit
+      # carries. A `<id>+<slug>@users.noreply.github.com` address only
+      # attributes a commit when the id is that account's own; both ids below
+      # come from `gh api /users/<slug>%5Bbot%5D`.
+      - name: Resolve the pull-request credential
+        id: pr_identity
+        env:
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          set -euo pipefail
+          if [ -n "${APP_TOKEN:-}" ]; then
+            echo "::add-mask::${APP_TOKEN}"
+            {
+              echo "token=${APP_TOKEN}"
+              echo 'committer=cicd-github-integration[bot] <260493941+cicd-github-integration[bot]@users.noreply.github.com>'
+            } >> "${GITHUB_OUTPUT}"
+            echo 'Pull request opens as the app; ci starts on the refresh branch by itself.'
+          else
+            {
+              echo "token=${{ github.token }}"
+              echo 'committer=github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
+            } >> "${GITHUB_OUTPUT}"
+            echo '::warning::Opening the pull request with GITHUB_TOKEN, which starts no other workflow. The refresh branch will carry no ci check until somebody closes and reopens the pull request. Configure APEX_APP_ID and APEX_APP_PRIVATE_KEY to remove this step.'
+          fi
 
       - name: Clone the private sources
         run: |
@@ -195,7 +226,9 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.pr_identity.outputs.token }}
+          committer: ${{ steps.pr_identity.outputs.committer }}
+          author: ${{ steps.pr_identity.outputs.committer }}
           base: main
           branch: content/auto-refresh
           add-paths: |
@@ -221,24 +254,3 @@ jobs:
             ```
 
             🤖🤖🤖 Generated with trusty-mpm — https://github.com/bobmatnyc/trusty-tools
-
-      # `ci` is the required check on `main`, and a pull request opened with
-      # GITHUB_TOKEN does not start other workflows — so the refresh branch
-      # would carry no `ci` check and could never merge. workflow_dispatch is
-      # exempt from that rule, and check runs are keyed by the branch head SHA,
-      # so dispatching `ci` against the branch resolves the context on the
-      # pull request.
-      - name: Dispatch ci against the refresh branch
-        if: >-
-          steps.pr.outputs.pull-request-operation == 'created' ||
-          steps.pr.outputs.pull-request-operation == 'updated'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
-        run: |
-          set -euo pipefail
-          if ! gh workflow run ci.yml --ref content/auto-refresh; then
-            echo "::error::Could not dispatch ci against content/auto-refresh. The pull request is open but carries no ci check, so it cannot merge. Fallback: close and reopen ${PR_URL}, which starts ci on the branch."
-            exit 1
-          fi
-          echo 'Dispatched ci against content/auto-refresh.'

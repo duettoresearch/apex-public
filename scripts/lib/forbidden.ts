@@ -199,13 +199,38 @@ const CONCRETE_PRODUCT_PATH_RE = /\bproducts\/(?!\{)[a-z0-9._-]+\/(?!\{)[a-z0-9.
 export const DEFAULT_DENYLIST_FILE = '.leak-denylist.local';
 
 /**
+ * Why: The env form and the file form were parsed differently. The env form
+ * split on commas before it dropped comments, so the text after a comma inside
+ * a `# comment` line survived as a token: a secret pasted from a file with two
+ * such comments reported 10 tokens where the same file reported 8. The count
+ * printed below is the only signal anyone has that the private tier is
+ * complete, so the two forms have to agree.
+ * What: Splits on newlines first, drops blank and `#` comment lines, then
+ * splits what is left on commas and trims each part. Same for both sources.
+ * Test: `a comment line containing a comma yields no token`
+ */
+function parseDenylist(text: string, into: Set<string>): void {
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    for (const part of trimmed.split(',')) {
+      const token = part.trim();
+      if (token) into.add(token);
+    }
+  }
+}
+
+/**
  * Loads the specific tokens the repository must not contain: people, internal
  * codenames, exact chat identifiers, personal handles.
  *
- * Sources are merged, both optional:
+ * Sources are merged, both optional, both parsed by `parseDenylist`:
  *   - `LEAK_DENYLIST` — newline- or comma-separated, for CI secrets
- *   - `LEAK_DENYLIST_FILE` (default `.leak-denylist.local`) — a gitignored file,
- *     one token per line, `#` comments and blank lines ignored
+ *   - `LEAK_DENYLIST_FILE` (default `.leak-denylist.local`) — a gitignored file
+ *
+ * Either form may carry `#` comment lines and blank lines; neither contributes
+ * a token. Pasting the file into the secret verbatim therefore loads the same
+ * tokens the file does, and both print the same count.
  *
  * Returns an empty list when neither is present. That is a legitimate state for
  * `npm test` and `npm run build`, which validate a snapshot generated elsewhere,
@@ -215,20 +240,11 @@ export function loadPrivateDenylist(root: string): string[] {
   const tokens = new Set<string>();
 
   const fromEnv = process.env['LEAK_DENYLIST'];
-  if (fromEnv) {
-    for (const raw of fromEnv.split(/[\n,]/)) {
-      const token = raw.trim();
-      if (token && !token.startsWith('#')) tokens.add(token);
-    }
-  }
+  if (fromEnv) parseDenylist(fromEnv, tokens);
 
   const file = process.env['LEAK_DENYLIST_FILE'] ?? DEFAULT_DENYLIST_FILE;
   try {
-    const text = readFileSync(resolve(root, file), 'utf8');
-    for (const raw of text.split('\n')) {
-      const token = raw.trim();
-      if (token && !token.startsWith('#')) tokens.add(token);
-    }
+    parseDenylist(readFileSync(resolve(root, file), 'utf8'), tokens);
   } catch {
     // Absent is normal; the caller decides whether that is acceptable.
   }

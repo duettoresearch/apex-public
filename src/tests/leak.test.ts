@@ -16,7 +16,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import {
   ALLOWED_TICKET_TOKENS,
@@ -116,6 +117,76 @@ describe('private denylist', () => {
   it('says plainly whether it is loaded', () => {
     expect(denylistStatus(['a', 'b'])).toContain('2 tokens loaded');
     expect(denylistStatus([])).toContain('WARNING');
+  });
+});
+
+describe('denylist parsing', () => {
+  /**
+   * Two comment lines, one of them containing a comma. The env form used to
+   * split on commas before it dropped comments, so `codenames and channel ids`
+   * became a token of its own and the count came out two higher than the same
+   * text read as a file.
+   */
+  const SAMPLE = [
+    '# people, codenames and channel ids live here',
+    'alpha-token',
+    'beta-token, gamma-token',
+    '',
+    '   ',
+  ].join('\n');
+
+  const EXPECTED = ['alpha-token', 'beta-token', 'gamma-token'];
+
+  /** Loads with the denylist environment set to exactly `env`, then restores it. */
+  function loadWith(env: Record<string, string | undefined>): string[] {
+    const keys = ['LEAK_DENYLIST', 'LEAK_DENYLIST_FILE'] as const;
+    const saved = keys.map((k) => [k, process.env[k]] as const);
+    try {
+      for (const k of keys) delete process.env[k];
+      for (const [k, v] of Object.entries(env)) if (v !== undefined) process.env[k] = v;
+      return loadPrivateDenylist(ROOT).sort();
+    } finally {
+      for (const [k, v] of saved) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }
+
+  it('a comment line containing a comma yields no token', () => {
+    expect(
+      loadWith({ LEAK_DENYLIST: SAMPLE, LEAK_DENYLIST_FILE: join(ROOT, 'no-such-file') }),
+    ).toEqual(EXPECTED);
+  });
+
+  it('the file form and the env form load the same tokens', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'denylist-'));
+    const file = join(dir, 'denylist');
+    try {
+      writeFileSync(file, SAMPLE, 'utf8');
+      expect(loadWith({ LEAK_DENYLIST_FILE: file })).toEqual(EXPECTED);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('the committed snapshot', () => {
+  /**
+   * A run timestamp in generated content makes every refresh a content change,
+   * so a week in which APEX did not move still opens a pull request whose whole
+   * diff is one clock reading. The site states its freshness from a build-time
+   * constant instead.
+   */
+  it('carries no wall-clock timestamp', async () => {
+    const offenders: string[] = [];
+    for (const file of await collect(GENERATED)) {
+      const text = await readFile(file, 'utf8');
+      if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(text) || /"generatedAt"/.test(text)) {
+        offenders.push(file.slice(ROOT.length + 1));
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
 
