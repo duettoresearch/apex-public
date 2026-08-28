@@ -10,7 +10,21 @@ dist/
 # Agent worktrees.
 .claude/worktrees/
 
+# Machine-local harness config.
+.claude/settings.json
+.claude/settings.json.bak
+
 # The private half of the leak denylist: specific people, codenames, chat ids,
 # and handles. This repository is public — committing the list would publish
 # exactly what it exists to suppress. See scripts/lib/forbidden.ts.
 .leak-denylist.local
+.trusty-search/
+
+# >>> trusty-mpm harness scaffolding (auto-managed by tm, issue #3427) >>>
+.claude/agents/
+.claude/skills/
+.claude/output-styles/
+.trusty-mpm/sessions/
+.trusty-mpm/logs/
+.trusty-mpm/last-instructions.md
+# <<< trusty-mpm harness scaffolding <<<

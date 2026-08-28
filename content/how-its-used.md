@@ -1,63 +1,62 @@
-A piece of work enters APEX as an idea and leaves it as a retrospective. Every
-step in between is a file, a status change, and a pull request.
+Work enters APEX as an idea and leaves as a retrospective. Every step in between
+is recorded as a file, a status change, and a pull request, creating a traceable
+path from intent to outcome.
 
 ## The lifecycle
 
-**Proposal.** An idea is written up as a proposal. A global or cross-cutting
-process change goes in `proposals/`; a product idea goes in the product's folder
-as a product proposal and can be upvoted to signal demand. A proposal that is
-accepted becomes an initiative, and the initiative records which proposal it came
-from.
+**Proposal.** An idea begins as a proposal. A global or cross-cutting process
+change goes in `proposals/`; a product idea goes in the product's folder, where
+it can be upvoted to signal demand. When a proposal is accepted, it becomes an
+initiative that retains a link to its source.
 
-**Initiative.** The strategic bet, and the root of everything downstream. It
-states a hypothesis, names an owning pod, and carries a status. It is a directory
-rather than a file, so meetings, discovery, experiments, designs, and updates
-live alongside it.
+**Initiative.** The initiative is the strategic bet and the root of everything
+downstream. It states a hypothesis, names an owning pod, and carries a status.
+Because it is a directory rather than a single file, meetings, discovery,
+experiments, designs, and updates can live alongside it.
 
-**Discovery.** Interviews, competitive scans, source inventories, survey
-readouts. Research that a later decision will rest on, kept next to the bet it
-informs rather than in a separate research tool.
+**Discovery.** Interviews, competitive scans, source inventories, and survey
+readouts capture the evidence behind later decisions. The research stays beside
+the bet it informs instead of disappearing into a separate tool.
 
 **Experiment.** A time-boxed test of the initiative's hypothesis. It runs
 `planned → running → completed` and records an outcome: validated, invalidated,
 or inconclusive. An inconclusive experiment is a real, publishable result.
 
-**PRD.** Requirements, generated from the initiative's accumulated context, and
-anchored to the experiments whose evidence they rest on. A separate review
-artifact scores the PRD's implementability across five dimensions before it can
-be approved.
+**PRD.** Requirements are generated from the initiative's accumulated context
+and anchored to the experiments that support them. Before approval, a separate
+review artifact scores the PRD's implementability across five dimensions.
 
-**Implementation.** The engineering execution plan, linked to an approved PRD.
-This is the one artifact allowed to carry granular ticket references — an
-initiative may name a board and a PRD may name a single epic, but neither carries
-issue tables, so a re-ticketed sprint does not churn the strategy documents.
+**Implementation.** The engineering execution plan links to an approved PRD. It
+is the only artifact allowed to carry granular ticket references. An initiative
+may name a board and a PRD may name a single epic, but neither carries issue
+tables, so re-ticketing a sprint does not churn the strategy documents.
 
 **Decision.** An architectural or process decision, recorded ADR-style, standing
 outside the initiative tree because its consequences outlive any one bet.
 
-**Retrospective.** After the work ships and metrics come in at T+7 and T+30, the
-outcome and its learnings are written down and the initiative reaches a terminal
+**Retrospective.** After the work ships and metrics arrive at T+7 and T+30, the
+team records the outcome and its lessons, and the initiative reaches a terminal
 status.
 
 ## Two ways to contribute
 
-**Open a pull request with the artifact.** For most work this is the whole
-process. Write the file, run the validator, open the PR, get the approvals the
-tier requires. The merge is the approval.
+**Open a pull request with the artifact.** For most work, this is the entire
+process: write the file, run the validator, open the pull request, and get the
+approvals required by its tier. The merge is the approval.
 
-**File a proposal first.** For an idea that needs public debate before anyone
-writes the artifact, a proposal in `proposals/` gets reviewed and voted on in the
-open. This costs more and is worth it when the disagreement is about whether to
-do the thing at all, not how.
+**File a proposal first.** When an idea needs open debate before anyone writes
+the artifact, a proposal in `proposals/` is reviewed and voted on. This path
+costs more, but it is worthwhile when the question is whether to do the work at
+all, not how to do it.
 
 The lightweight path is the default. The heavyweight path exists so that the
 default does not have to carry arguments it was not designed for.
 
 ## Branch prefixes
 
-The branch prefix signals what kind of change is arriving, and the slug matches
-the initiative directory or proposal filename so the branch and the work it
-carries cannot drift apart.
+The branch prefix signals the kind of change being proposed. Its slug matches
+the initiative directory or proposal filename, keeping the branch tied to the
+work it carries.
 
 `initiative/` · `proposal/` · `experiment/` · `prd/` · `impl/` · `design/` ·
 `guide/` · `policy/` · `decision/` · `team/` · `pod/` · `guild/` · `arb/` ·
@@ -68,8 +67,8 @@ The full table, with when to use each, is in the
 
 ## Review tiers
 
-A classifier reads every changed file in a pull request and assigns it a tier.
-The pull request inherits the highest tier of any file it touches.
+A classifier reads every changed file and assigns it a tier. The pull request
+inherits the highest tier assigned to any file it touches.
 
 | Tier  | What lands here                                                                                                | Review required             |
 | ----- | -------------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -77,8 +76,8 @@ The pull request inherits the highest tier of any file it touches.
 | **1** | An existing core artifact with administrative-only frontmatter changes; any other file inside a product folder | One code-owner approval     |
 | **2** | New core artifacts, substantive changes, anything ambiguous or unreadable                                      | Full code-owner review      |
 
-Two rules bound what Tier 0 can admit. An update artifact qualifies only when
-both its path and its own frontmatter say it is one — a markdown file merely
+Two rules limit what Tier 0 can admit. An update artifact qualifies only when
+both its path and its own frontmatter identify it as one — a Markdown file merely
 sitting in an `updates/` directory does not. And if a file's frontmatter `type`
 changed between the base branch and the pull request, the whole pull request
 loses auto-merge eligibility, so an artifact cannot be relabelled into a
@@ -93,15 +92,15 @@ or `validated` needs a leadership approver.
 
 ## Skills as slash commands
 
-{{stats.skills}} skills wrap the procedures above as `/apex-*` commands, grouped
-into 12 workflow categories. `/apex-initiative` creates an initiative and gathers
-its context. `/apex-prd` generates a PRD from that context. `/apex-prd-review`
-scores it. `/apex-transition` moves an artifact's status and refuses an illegal
-transition. `/apex-validate` runs the same checks CI will run.
+{{stats.skills}} skills turn the procedures above into `/apex-*` commands across
+12 workflow categories. `/apex-initiative` creates an initiative and gathers its
+context. `/apex-prd` generates a PRD from that context, and `/apex-prd-review`
+scores it. `/apex-transition` changes an artifact's status while rejecting
+illegal transitions. `/apex-validate` runs the same checks as CI.
 
-A skill is a written procedure, not a wrapper around a hidden API — which is why
-the same skill works whether a person or an agent is executing it, and why the
-result is reviewable as a diff either way.
+A skill is a written procedure, not a wrapper around a hidden API. The same skill
+therefore works for a person or an agent, and the result remains reviewable as a
+diff either way.
 
 The complete catalog is in the [skills and agents specification](/docs/spec-skills).
 

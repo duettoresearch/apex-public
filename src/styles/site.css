@@ -70,14 +70,14 @@ a:hover {
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
-/* The wordmark is inline SVG painted with currentColor, so the header sets its
-   color the same way it sets the nav's. The chevron keeps its own brand orange
-   inside the component. */
+/* The lockup is a white raster asset, so it takes no color from the header and
+   needs a dark ground — `.mkt-header` paints `--bg-header`. 20px rather than the
+   15px the old wordmark-only mark used: this file leads with the unicorn, whose
+   detail closes up below about 18px. */
 .site-logo {
-  height: 15px;
+  height: 20px;
   width: auto;
   display: block;
-  color: var(--fg-on-dark-primary);
 }
 
 .mkt-header__left a {
@@ -514,11 +514,16 @@ a:hover {
   align-items: center;
   justify-content: space-between;
 }
+/* `.mkt-footer` paints `--bg-dark-ink`, which is the dark ground the white
+   lockup needs. The link is inline-block so it wraps the image and nothing
+   more. */
+.site-footer__brand-link {
+  display: inline-block;
+}
 .site-footer__logo {
-  height: 14px;
+  height: 18px;
   width: auto;
   display: block;
-  color: var(--fg-on-dark-primary);
 }
 .site-footer__note {
   font-size: var(--fs-body-sm);
