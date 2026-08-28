@@ -1,6 +1,6 @@
-Four things enforce the framework: a command-line validator, a set of CI
-workflows, a library of skills, and a companion app that fronts the repository
-for people and for AI tools.
+Four layers put the framework into practice: a command-line validator, CI
+workflows, a library of skills, and a Companion app that gives people and AI
+tools a usable front end to the repository.
 
 ## The `apex` CLI
 
@@ -15,7 +15,7 @@ directory containing both `products/` and `schemas/`.
 | `apex migrate`            | Move initiatives into the directory their status implies                  |
 | `apex status-change`      | Transition one initiative's status and relocate its directory             |
 | `apex archive`            | Move terminal proposals into the archive                                  |
-| `apex check-links`        | Verify markdown link integrity, with an optional autofix                  |
+| `apex check-links`        | Verify Markdown link integrity, with an optional autofix                  |
 | `apex check-codeowners`   | Verify code-owner coverage over the artifact tree                         |
 | `apex classify-pr`        | Assign a review tier to each changed file in a pull request               |
 | `apex verify-pr-type`     | Check that a pull request's declared type matches its contents            |
@@ -28,14 +28,14 @@ arrives before the commit rather than after the push.
 
 ## What validation checks
 
-`apex validate` runs its passes in a fixed order over a single filesystem walk.
-They fall into five groups:
+`apex validate` runs its checks in a fixed order during a single filesystem
+walk. The checks fall into five groups:
 
 **The contract.** Unknown artifact types are errors. Frontmatter is validated
-against the per-type schema branch. Artifact IDs are globally unique. Deprecated
-fields are reported on a runway — a warning first, an error after a stated
-promotion date — so a contract change does not break every existing artifact on
-the day it lands.
+against the schema branch for its type, and artifact IDs must be globally unique.
+Deprecated fields follow a published transition window — first a warning, then
+an error after a stated date — so a contract change does not break every existing
+artifact on the day it lands.
 
 **Linkage.** Cross-references resolve: an experiment's parent initiative, a PRD's
 validated experiments, an implementation's parent PRD, an initiative's
@@ -55,14 +55,13 @@ tracked. Binary files inside product folders are size-capped.
 **Documentation coherence.** The documented skill count must match the number of
 skills on disk — the check exists because that number had drifted before.
 
-Findings carry a severity. Advisory passes warn and never fail a build; a
-referential rule graduates from warning to error on a published runway rather
-than on the day someone writes it.
+Every finding carries a severity. Advisory checks warn without failing the
+build. Referential rules move from warning to error on a published schedule
+rather than on the day they are introduced.
 
 ## CI workflows
 
-{{stats.workflows}} workflows run against the repository. Their jobs, in one line
-each:
+{{stats.workflows}} workflows run against the repository. Together, they:
 
 - Validate frontmatter and links on every pull request and every push, filtered
   to the changed files on a pull request and unfiltered on a push.
@@ -88,31 +87,31 @@ framework as slash commands: setup, proposals, discovery, specification,
 planning, delivery, learning, documentation and communications, records,
 reference, status and workflow, and pull requests.
 
-Each skill is a written procedure in a `SKILL.md` file rather than a wrapper
-around a hidden implementation, which is why the same skill executes correctly
-whether a person or an agent is following it. The catalog is deployed to two
-trees — one canonical, one a set of stubs pointing at it — so the procedure has a
-single source and both editors reach it.
+Each skill is a written procedure in a `SKILL.md` file, not a wrapper around a
+hidden implementation. The same skill therefore works for a person or an agent.
+The catalog is deployed to two trees — one canonical and one containing stubs
+that point to it — so every procedure has a single source while remaining
+available in both editors.
 
 The full catalog is in the [skills and agents specification](/docs/spec-skills).
 
 ## APEX Companion
 
-A hosted web application, REST API, and CLI that lets people browse, search, and
-summarize APEX artifacts without git, a terminal, or an AI coding tool. It is the
-answer to the framework's main adoption cost: the repository is a good source of
-truth and a poor reading experience.
+The APEX Companion is a hosted web application, REST API, and CLI for browsing,
+searching, and summarizing artifacts without Git, a terminal, or an AI coding
+tool. It addresses the framework's main adoption cost: a repository is a strong
+source of truth but a poor reading experience.
 
 It also hosts the canonical MCP server, which gives AI tools authenticated read
-and write access to the artifact graph over OAuth 2.1 with PKCE — searching
-artifacts, reading one in full, creating a new one with a body, transitioning a
-status, and driving pull-request review. Every write goes through the same schema
-validation and lands as a reviewable change.
+and write access to the artifact graph over OAuth 2.1 with PKCE. Tools can search
+artifacts, read one in full, create one with a body, transition its status, and
+drive pull-request review. Every write passes through the same schema validation
+and lands as a reviewable change.
 
 ## Retired
 
-Two things were built and then removed once something else covered the same
-ground, and the removals are recorded as decisions rather than left implicit:
+Two components were removed after other tools covered the same ground. Their
+retirements are recorded as explicit decisions:
 
 - **`packages/apex-mcp`** — a local, unauthenticated MCP server run over stdio.
   Retired in favor of the Companion's hosted server, so there is one MCP surface

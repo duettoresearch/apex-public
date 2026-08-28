@@ -1,6 +1,6 @@
 {
   "sourceRef": "origin/main",
-  "trackedMarkdown": 4260,
+  "trackedMarkdown": 4262,
   "artifactsByType": {
     "guide": 1224,
     "wiki": 962,
@@ -28,9 +28,9 @@
     "number": 5,
     "date": 4,
     "retrospective": 3,
+    "meeting": 3,
     "guild-charter": 3,
     "rfc": 3,
-    "meeting": 2,
     "implementation-plan": 2,
     "note": 2,
     "test-manifest": 1,
@@ -44,7 +44,7 @@
     "apaleo": 1,
     "ohip": 1
   },
-  "artifactsTotal": 3463,
+  "artifactsTotal": 3464,
   "initiatives": 195,
   "initiativesByStatus": {
     "discovery": 94,
@@ -56,17 +56,17 @@
     "learning": 1
   },
   "domains": 9,
-  "products": 59,
+  "products": 60,
   "decisions": 16,
   "proposals": 20,
   "skills": 41,
   "templates": 20,
   "workflows": 21,
   "artifactTypes": 22,
-  "commits": 1401,
+  "commits": 1406,
   "contributors": 67,
   "firstCommitDate": "2026-02-07",
-  "daysActive": 201,
-  "mergedPullRequests": 1122,
+  "daysActive": 202,
+  "mergedPullRequests": 1127,
   "companionMcpTools": 68
 }
