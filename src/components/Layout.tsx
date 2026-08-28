@@ -13,6 +13,14 @@ import { Link, NavLink } from 'react-router-dom';
 import type { Doc, TocEntry } from '../lib/content.ts';
 import { DuettoLogo } from './DuettoLogo.tsx';
 
+/**
+ * Duetto's main site, and the only external destination in the chrome. The
+ * footer carries it twice — on the lockup and as a named link — because a
+ * reader who recognises the mark and a reader scanning the link column look in
+ * different places. One constant so the two cannot drift apart.
+ */
+const DUETTO_HOME = 'https://www.duettocloud.com/';
+
 const NAV: readonly { to: string; label: string }[] = [
   { to: '/how-it-works', label: 'How it works' },
   { to: '/schema', label: 'Schema' },
@@ -65,7 +73,15 @@ export function Footer(): ReactNode {
     <footer className="mkt-footer">
       <div className="site-footer__inner">
         <div>
-          <DuettoLogo className="site-footer__logo" />
+          <a
+            className="site-footer__brand-link"
+            href={DUETTO_HOME}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Duetto home"
+          >
+            <DuettoLogo className="site-footer__logo" />
+          </a>
           <p className="site-footer__note">
             © Duetto. APEX is an internal product development framework.
           </p>
@@ -75,8 +91,8 @@ export function Footer(): ReactNode {
           <Link to="/how-it-works">How it works</Link>
           <Link to="/schema">Schema</Link>
           <Link to="/tooling">Tooling</Link>
-          <a href="https://duetto.com" target="_blank" rel="noreferrer noopener">
-            duetto.com
+          <a href={DUETTO_HOME} target="_blank" rel="noreferrer noopener">
+            duettocloud.com
           </a>
         </div>
       </div>
