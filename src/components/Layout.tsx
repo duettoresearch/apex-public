@@ -92,7 +92,7 @@ export function Footer(): ReactNode {
           <Link to="/schema">Schema</Link>
           <Link to="/tooling">Tooling</Link>
           <a href={DUETTO_HOME} target="_blank" rel="noreferrer noopener">
-            duettocloud.com
+            Duetto
           </a>
         </div>
       </div>
